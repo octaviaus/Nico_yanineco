@@ -1,13 +1,14 @@
-import { Application, Ticker } from 'pixi.js'
+import { Application } from 'pixi.js'
 import { SmokeField, makeCloudTexture } from './lib/SmokeField'
 import { SMOKE_ORIGIN_FROM_BOTTOM, SMOKE_ORIGIN_FROM_RIGHT } from '../shared/geometry'
 
 const app = new Application({
   resizeTo: window,
   backgroundAlpha: 0,
-  antialias: true,
-  resolution: window.devicePixelRatio || 1,
-  autoDensity: true
+  antialias: false,
+  resolution: 1,
+  autoDensity: true,
+  autoStart: false
 })
 document.body.appendChild(app.view as HTMLCanvasElement)
 
@@ -21,8 +22,14 @@ function origin() {
   }
 }
 
-Ticker.shared.add(() => {
-  field.tick(origin(), false)
+function stopIfIdle() {
+  if (!field.isEmpty) return
+  if (app.ticker.started) app.ticker.stop()
+}
+
+app.ticker.add(() => {
+  field.tick(null, false)
+  stopIfIdle()
 })
 
 window.niko.onSmoke((cmd) => {
@@ -35,12 +42,10 @@ window.niko.onSmoke((cmd) => {
       field.spawn(o.x + Math.random() * 80, o.y - Math.random() * 40, true)
     }
   }
-})
-
-window.niko.getConfig().then((cfg) => {
-  field.setIntensity(0.2)
-  window.setInterval(() => {
-    const o = origin()
-    field.spawn(o.x, o.y, false)
-  }, Math.max(10, cfg.idlePuffSeconds) * 400)
+  if (field.isEmpty) {
+    app.render()
+    app.ticker.stop()
+    return
+  }
+  if (!app.ticker.started) app.ticker.start()
 })
