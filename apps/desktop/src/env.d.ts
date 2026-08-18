@@ -13,7 +13,15 @@ interface NikoApi {
   onSmoke: (cb: (cmd: { intensity: number; burst: boolean; clear: boolean }) => void) => void
   onSubtitle: (cb: (text: string) => void) => void
   onStatus: (cb: (text: string) => void) => void
-  onAudio: (cb: (payload: { base64: string; mime: string }) => void) => void
+  onAudio: (cb: (payload: {
+    base64: string
+    mime: string
+    filePath?: string
+    fileUrl?: string
+    buffer?: ArrayBuffer
+    interrupt?: boolean
+    final?: boolean
+  }) => void) => void
   onHotkeyPtt: (cb: () => void) => void
   onConfigReloaded: (cb: () => void) => void
 }

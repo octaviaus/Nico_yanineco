@@ -1,9 +1,31 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import { readFileSync } from 'node:fs'
 import type { CharacterPose } from '@niko/core'
 
 export type RendererConfig = {
   sttProvider: 'openai' | 'local' | 'webspeech'
   idlePuffSeconds: number
+}
+
+export type NikoAudioPayload = {
+  base64: string
+  mime: string
+  filePath?: string
+  fileUrl?: string
+  buffer?: ArrayBuffer
+  interrupt?: boolean
+  final?: boolean
+}
+
+function fileToArrayBuffer(filePath: string): ArrayBuffer | undefined {
+  try {
+    const buf = readFileSync(filePath)
+    const copy = new Uint8Array(buf.byteLength)
+    copy.set(buf)
+    return copy.buffer
+  } catch {
+    return undefined
+  }
 }
 
 const niko = {
@@ -28,8 +50,14 @@ const niko = {
   onStatus: (cb: (text: string) => void) => {
     ipcRenderer.on('niko:status', (_e, text: string) => cb(text))
   },
-  onAudio: (cb: (payload: { base64: string; mime: string }) => void) => {
-    ipcRenderer.on('niko:audio', (_e, payload) => cb(payload))
+  onAudio: (cb: (payload: NikoAudioPayload) => void) => {
+    ipcRenderer.on('niko:audio', (_e, payload: NikoAudioPayload) => {
+      const next: NikoAudioPayload = { ...payload, base64: payload.base64 ?? '' }
+      if (!next.buffer && next.filePath) {
+        next.buffer = fileToArrayBuffer(next.filePath)
+      }
+      cb(next)
+    })
   },
   onHotkeyPtt: (cb: () => void) => {
     ipcRenderer.on('niko:hotkey-ptt', () => cb())
@@ -41,8 +69,3 @@ const niko = {
 
 contextBridge.exposeInMainWorld('niko', niko)
 
-declare global {
-  interface Window {
-    niko: typeof niko
-  }
-}

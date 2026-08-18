@@ -21,16 +21,38 @@ const app = new Application({
 })
 stageEl.appendChild(app.view as HTMLCanvasElement)
 
+type AudioClip = {
+  base64: string
+  mime: string
+  filePath?: string
+  fileUrl?: string
+  buffer?: ArrayBuffer
+  interrupt?: boolean
+  final?: boolean
+}
+
 let renderer: CharacterRenderer
 let talking = false
 let holding = false
 let mediaRecorder: MediaRecorder | null = null
 let chunks: Blob[] = []
-let audioEl: HTMLAudioElement | null = null
 let sttProvider: string = 'webspeech'
 let idlePuff = 22
 let mouthSmoke: SmokeField
 let currentPose: CharacterPose = 'idle'
+const clipQueue: AudioClip[] = []
+let queuePlaying = false
+let expectMore = false
+let playToken = 0
+let currentBlobUrl: string | null = null
+let currentDone: (() => void) | null = null
+const playbackEl = new Audio()
+playbackEl.preload = 'auto'
+let audioCtx: AudioContext | null = null
+let analyser: AnalyserNode | null = null
+let mediaSource: MediaElementAudioSourceNode | null = null
+let mouthRaf = 0
+const timeDomain = new Uint8Array(1024)
 
 async function boot() {
   const cfg = await window.niko.getConfig()
@@ -67,8 +89,10 @@ async function boot() {
 window.niko.onPose((pose) => {
   currentPose = pose
   renderer?.setPose(pose)
-  talking = pose === 'talk'
-  renderer?.setMouthOpen(pose === 'talk' ? 0.7 : pose === 'exhale' ? 0.4 : 0)
+  talking = pose === 'talk' || queuePlaying
+  if (!queuePlaying) {
+    renderer?.setMouthOpen(pose === 'talk' ? 0.7 : pose === 'exhale' ? 0.4 : 0)
+  }
   renderer?.setSmokeParam(pose === 'exhale' ? 0.85 : 0.2)
 })
 
@@ -81,22 +105,8 @@ window.niko.onStatus((text) => {
   statusEl.textContent = text
 })
 
-window.niko.onAudio(async ({ base64, mime }) => {
-  talking = true
-  renderer?.setPose('talk')
-  const url = `data:${mime};base64,${base64}`
-  audioEl?.pause()
-  audioEl = new Audio(url)
-  audioEl.onended = () => {
-    talking = false
-    window.niko.speakingEnd()
-  }
-  try {
-    await audioEl.play()
-  } catch {
-    talking = false
-    window.niko.speakingEnd()
-  }
+window.niko.onAudio((payload) => {
+  enqueueClip(payload)
 })
 
 window.niko.onSmoke((cmd) => {
@@ -133,6 +143,7 @@ window.niko.onHotkeyPtt(() => {
 async function startHold() {
   if (holding) return
   holding = true
+  stopSpeechPlayback()
   window.niko.ptt(true)
   if (sttProvider === 'webspeech' && startWebSpeech()) return
   await startRecorder()
@@ -196,6 +207,209 @@ async function startRecorder() {
 }
 
 void boot()
+
+function clipHasAudio(clip: AudioClip): boolean {
+  return Boolean(
+    (clip.buffer && clip.buffer.byteLength) ||
+      clip.filePath ||
+      clip.fileUrl ||
+      clip.base64
+  )
+}
+
+function enqueueClip(payload: AudioClip) {
+  if (payload.interrupt) {
+    clipQueue.length = 0
+    stopCurrentClip()
+  }
+  if (payload.final) expectMore = false
+  else if (clipHasAudio(payload) || payload.interrupt) expectMore = true
+
+  if (clipHasAudio(payload)) {
+    clipQueue.push(payload)
+    void playNext()
+    return
+  }
+  if (!expectMore && !queuePlaying) finishSpeech()
+}
+
+function stopSpeechPlayback() {
+  expectMore = false
+  clipQueue.length = 0
+  stopCurrentClip()
+  finishSpeech()
+}
+
+function stopCurrentClip() {
+  playToken += 1
+  stopMouthRms()
+  playbackEl.onended = null
+  playbackEl.onerror = null
+  playbackEl.pause()
+  try {
+    playbackEl.removeAttribute('src')
+    playbackEl.load()
+  } catch {
+    /* ignore */
+  }
+  revokeBlob()
+  const done = currentDone
+  currentDone = null
+  done?.()
+  queuePlaying = false
+}
+
+function finishSpeech() {
+  talking = false
+  queuePlaying = false
+  expectMore = false
+  stopMouthRms()
+  renderer?.setMouthOpen(0)
+  window.niko.speakingEnd()
+}
+
+function revokeBlob() {
+  if (currentBlobUrl?.startsWith('blob:')) URL.revokeObjectURL(currentBlobUrl)
+  currentBlobUrl = null
+}
+
+function fileUrlFromPath(filePath: string): string {
+  const p = filePath.replace(/\\/g, '/')
+  return p.startsWith('file:') ? p : `file://${p.startsWith('/') ? '' : '/'}${p}`
+}
+
+function blobUrlFromBuffer(buffer: ArrayBuffer, mime: string): string {
+  const blob = new Blob([new Uint8Array(buffer)], { type: mime || 'audio/mpeg' })
+  currentBlobUrl = URL.createObjectURL(blob)
+  return currentBlobUrl
+}
+
+function clipSources(clip: AudioClip): string[] {
+  const sources: string[] = []
+  if (clip.buffer && clip.buffer.byteLength) {
+    sources.push(blobUrlFromBuffer(clip.buffer, clip.mime))
+  }
+  if (clip.base64) sources.push(`data:${clip.mime};base64,${clip.base64}`)
+  if (clip.fileUrl) sources.push(clip.fileUrl)
+  else if (clip.filePath) sources.push(fileUrlFromPath(clip.filePath))
+  return sources
+}
+
+async function playNext() {
+  if (queuePlaying) return
+  const clip = clipQueue.shift()
+  if (!clip) {
+    if (!expectMore) finishSpeech()
+    return
+  }
+  const sources = clipSources(clip)
+  if (!sources.length) {
+    void playNext()
+    return
+  }
+  queuePlaying = true
+  talking = true
+  renderer?.setPose('talk')
+  const token = playToken
+  try {
+    await playClipSources(sources, token)
+  } catch {
+    /* skip broken clip */
+  }
+  revokeBlob()
+  if (token !== playToken) return
+  queuePlaying = false
+  void playNext()
+}
+
+async function playClipSources(sources: string[], token: number): Promise<void> {
+  let lastErr: unknown
+  for (const src of sources) {
+    if (token !== playToken) return
+    try {
+      await playClip(src, token)
+      return
+    } catch (err) {
+      lastErr = err
+      revokeBlob()
+    }
+  }
+  if (lastErr) throw lastErr
+}
+
+function playClip(src: string, token: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const finish = (err?: Error) => {
+      if (settled) return
+      settled = true
+      playbackEl.onended = null
+      playbackEl.onerror = null
+      stopMouthRms()
+      currentDone = null
+      if (playToken !== token) {
+        resolve()
+        return
+      }
+      if (err) reject(err)
+      else resolve()
+    }
+    currentDone = () => finish()
+    playbackEl.onended = () => finish()
+    playbackEl.onerror = () => finish(new Error('audio error'))
+    playbackEl.src = src
+    ensureAudioGraph()
+    void audioCtx?.resume()
+    startMouthRms()
+    void playbackEl.play().catch((err) => finish(err instanceof Error ? err : new Error('play failed')))
+  })
+}
+
+function ensureAudioGraph() {
+  if (mediaSource || !playbackEl) return
+  const AC =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!AC) return
+  try {
+    audioCtx = new AC()
+    analyser = audioCtx.createAnalyser()
+    analyser.fftSize = 1024
+    analyser.smoothingTimeConstant = 0.35
+    mediaSource = audioCtx.createMediaElementSource(playbackEl)
+    mediaSource.connect(analyser)
+    analyser.connect(audioCtx.destination)
+  } catch (err) {
+    console.warn('[mouth] analyser unavailable', err)
+    analyser = null
+    mediaSource = null
+  }
+}
+
+function startMouthRms() {
+  stopMouthRms()
+  const tick = () => {
+    if (!analyser) return
+    const buf =
+      timeDomain.length === analyser.fftSize ? timeDomain : new Uint8Array(analyser.fftSize)
+    analyser.getByteTimeDomainData(buf)
+    let sum = 0
+    for (let i = 0; i < buf.length; i++) {
+      const n = (buf[i] - 128) / 128
+      sum += n * n
+    }
+    const rms = Math.sqrt(sum / buf.length)
+    const open = Math.min(1, Math.max(0, (rms - 0.02) * 7))
+    renderer?.setMouthOpen(open)
+    mouthRaf = requestAnimationFrame(tick)
+  }
+  mouthRaf = requestAnimationFrame(tick)
+}
+
+function stopMouthRms() {
+  if (mouthRaf) cancelAnimationFrame(mouthRaf)
+  mouthRaf = 0
+}
 
 interface SpeechRecognition extends EventTarget {
   lang: string
