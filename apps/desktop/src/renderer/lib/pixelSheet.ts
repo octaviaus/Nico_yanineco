@@ -1,3 +1,5 @@
+import type { CharacterPose } from '@niko/core'
+
 /** Pixel puppet atlas: native art is 80×112, drawn at integer 3× → 240×336. */
 
 export const PIXEL_NATIVE_WIDTH = 80
@@ -10,6 +12,7 @@ export type PlaceholderShape =
   | { kind: 'poly'; points: number[] }
 
 export type PixelLayerGroup = 'eyes' | 'mouth'
+export type FaceState = 'open' | 'half' | 'closed'
 
 export type PixelLayerDef = {
   name: string
@@ -18,9 +21,14 @@ export type PixelLayerDef = {
   x: number
   y: number
   group?: PixelLayerGroup
-  variant?: 'open' | 'closed'
+  variant?: FaceState
   color: number
   shapes: PlaceholderShape[]
+}
+
+export type PixelPoseFace = {
+  eyes?: FaceState
+  mouth?: FaceState
 }
 
 export type PixelSheet = {
@@ -29,6 +37,7 @@ export type PixelSheet = {
   scale: number
   mouth: { x: number; y: number }
   layers: PixelLayerDef[]
+  poses: Partial<Record<CharacterPose, PixelPoseFace>>
 }
 
 const SKIN = 0xe8d4c4
@@ -94,6 +103,10 @@ export const DEFAULT_PIXEL_SHEET: PixelSheet = {
       { kind: 'ellipse', x: 33, y: 26, rx: 3.5, ry: 4 },
       { kind: 'ellipse', x: 47, y: 26, rx: 3.5, ry: 4 }
     ], { group: 'eyes', variant: 'open' }),
+    layer('eyes-half', 9, EYE, [
+      { kind: 'ellipse', x: 33, y: 26, rx: 3.5, ry: 1.6 },
+      { kind: 'ellipse', x: 47, y: 26, rx: 3.5, ry: 1.6 }
+    ], { group: 'eyes', variant: 'half' }),
     layer('eyes-closed', 9, EYE, [
       { kind: 'rect', x: 29, y: 26, w: 8, h: 2 },
       { kind: 'rect', x: 43, y: 26, w: 8, h: 2 }
@@ -106,16 +119,26 @@ export const DEFAULT_PIXEL_SHEET: PixelSheet = {
       group: 'mouth',
       variant: 'open'
     })
-  ]
+  ],
+  poses: {
+    idle: { eyes: 'open', mouth: 'closed' },
+    talk: { eyes: 'open', mouth: 'open' },
+    inhale: { eyes: 'closed', mouth: 'closed' },
+    exhale: { eyes: 'half', mouth: 'open' }
+  }
+}
+
+export function parseFaceState(v: unknown): FaceState | undefined {
+  return v === 'open' || v === 'half' || v === 'closed' ? v : undefined
 }
 
 export function inferFaceSlot(name: string): Pick<PixelLayerDef, 'group' | 'variant'> {
   const n = name.toLowerCase()
   if (/(eye|blink)/.test(n)) {
-    return {
-      group: 'eyes',
-      variant: /(close|shut|half)/.test(n) ? 'closed' : 'open'
-    }
+    let variant: FaceState = 'open'
+    if (/(close|shut)/.test(n)) variant = 'closed'
+    else if (/half/.test(n)) variant = 'half'
+    return { group: 'eyes', variant }
   }
   if (/(mouth|lip)/.test(n)) {
     return {
@@ -158,13 +181,10 @@ function parseLayer(raw: unknown, index: number, fallback: PixelLayerDef | undef
     fallback?.src ||
     `layers/${name}.png`
   const face = inferFaceSlot(name)
-  const group = o.group === 'eyes' || o.group === 'mouth' ? o.group : face.group ?? fallback?.group
+  const group =
+    parseGroup(o.group) ?? parseGroup(o.slot) ?? face.group ?? fallback?.group
   const variant =
-    o.variant === 'open' || o.variant === 'closed'
-      ? o.variant
-      : o.state === 'open' || o.state === 'closed'
-        ? o.state
-        : face.variant ?? fallback?.variant
+    parseFaceState(o.variant) ?? parseFaceState(o.state) ?? face.variant ?? fallback?.variant
   return {
     name,
     src,
@@ -176,6 +196,30 @@ function parseLayer(raw: unknown, index: number, fallback: PixelLayerDef | undef
     color: num(o.color, fallback?.color ?? 0x888888),
     shapes: fallback?.shapes ?? [{ kind: 'rect', x: 8, y: 8 + index * 6, w: 64, h: 8 }]
   }
+}
+
+function parseGroup(v: unknown): PixelLayerGroup | undefined {
+  return v === 'eyes' || v === 'mouth' ? v : undefined
+}
+
+function parsePoses(raw: unknown): PixelSheet['poses'] {
+  const poses: PixelSheet['poses'] = {
+    idle: { ...DEFAULT_PIXEL_SHEET.poses.idle },
+    talk: { ...DEFAULT_PIXEL_SHEET.poses.talk },
+    inhale: { ...DEFAULT_PIXEL_SHEET.poses.inhale },
+    exhale: { ...DEFAULT_PIXEL_SHEET.poses.exhale }
+  }
+  const o = asRecord(raw)
+  if (!o) return poses
+  for (const key of ['idle', 'talk', 'inhale', 'exhale'] as CharacterPose[]) {
+    const p = asRecord(o[key])
+    if (!p) continue
+    poses[key] = {
+      eyes: parseFaceState(p.eyes) ?? poses[key]?.eyes,
+      mouth: parseFaceState(p.mouth) ?? poses[key]?.mouth
+    }
+  }
+  return poses
 }
 
 function parseLayerList(raw: unknown): unknown[] | null {
@@ -196,7 +240,8 @@ export function normalizeSheet(raw: unknown): PixelSheet {
     height: DEFAULT_PIXEL_SHEET.height,
     scale: DEFAULT_PIXEL_SHEET.scale,
     mouth: { ...DEFAULT_PIXEL_SHEET.mouth },
-    layers: DEFAULT_PIXEL_SHEET.layers.map((l) => ({ ...l, shapes: [...l.shapes] }))
+    layers: DEFAULT_PIXEL_SHEET.layers.map((l) => ({ ...l, shapes: [...l.shapes] })),
+    poses: parsePoses(null)
   }
   const o = asRecord(raw)
   if (!o) return sheet
@@ -217,6 +262,8 @@ export function normalizeSheet(raw: unknown): PixelSheet {
       sheet.mouth = { x, y }
     }
   }
+
+  sheet.poses = parsePoses(o.poses)
 
   const listed = parseLayerList(o.layers ?? o.parts ?? o.sprites)
   if (!listed?.length) return sheet

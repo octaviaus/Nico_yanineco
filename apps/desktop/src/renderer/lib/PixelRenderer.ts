@@ -8,6 +8,7 @@ import {
   PIXEL_SCALE,
   layerSrcCandidates,
   normalizeSheet,
+  type FaceState,
   type PixelLayerDef,
   type PixelSheet,
   type PlaceholderShape
@@ -26,7 +27,9 @@ export class PixelRenderer implements CharacterRenderer {
   private layers: LayerView[] = []
   private pose: CharacterPose = 'idle'
   private mouthOpen = 0
-  private eyesClosed = false
+  private eyeState: FaceState = 'open'
+  private blinkSeq: FaceState[] = []
+  private blinkIdx = -1
   private blinkAcc = 0
   private blinkHold = 0
   private nextBlink = 2800
@@ -57,8 +60,7 @@ export class PixelRenderer implements CharacterRenderer {
     }
 
     this.layout()
-    this.setEyes(false)
-    this.applyMouth()
+    this.applyPoseFace()
     Ticker.shared.add(this.onTick)
     console.info('Pixel puppet renderer active', {
       layers: this.layers.length,
@@ -69,10 +71,14 @@ export class PixelRenderer implements CharacterRenderer {
 
   setPose(pose: CharacterPose): void {
     this.pose = pose
-    if (pose === 'talk') this.setMouthOpen(0.7)
-    else if (pose === 'exhale') this.setMouthOpen(0.4)
-    else if (pose === 'inhale') this.setMouthOpen(0.15)
-    else this.setMouthOpen(0)
+    const face = this.sheet.poses[pose]
+    if (face?.mouth === 'open') this.mouthOpen = pose === 'talk' ? 0.7 : 0.4
+    else if (pose === 'talk') this.mouthOpen = 0.7
+    else if (pose === 'exhale') this.mouthOpen = 0.4
+    else if (pose === 'inhale') this.mouthOpen = 0.15
+    else this.mouthOpen = 0
+    this.applyMouth()
+    if (this.blinkIdx < 0) this.setEyes(face?.eyes ?? 'open')
   }
 
   setMouthOpen(value: number): void {
@@ -102,45 +108,73 @@ export class PixelRenderer implements CharacterRenderer {
     this.root.y = Math.round(this.viewH - h)
   }
 
+  private applyPoseFace() {
+    const face = this.sheet.poses[this.pose]
+    this.applyMouth()
+    this.setEyes(face?.eyes ?? 'open')
+  }
+
   private applyMouth() {
-    const open = this.mouthOpen > 0.35 || this.pose === 'talk'
+    const poseMouth = this.sheet.poses[this.pose]?.mouth
+    const open = this.mouthOpen > 0.35 || poseMouth === 'open' || this.pose === 'talk'
     this.setGroup('mouth', open ? 'open' : 'closed')
   }
 
-  private setEyes(closed: boolean) {
-    this.eyesClosed = closed
-    this.setGroup('eyes', closed ? 'closed' : 'open')
+  private setEyes(state: FaceState) {
+    this.eyeState = state
+    this.setGroup('eyes', state)
   }
 
-  private setGroup(group: 'eyes' | 'mouth', variant: 'open' | 'closed') {
+  private setGroup(group: 'eyes' | 'mouth', variant: FaceState) {
     const members = this.layers.filter((l) => l.def.group === group)
     if (!members.length) return
-    const hasVariant = members.some((l) => l.def.variant === variant)
+    const resolved: FaceState =
+      members.some((l) => l.def.variant === variant)
+        ? variant
+        : variant === 'half' && members.some((l) => l.def.variant === 'closed')
+          ? 'closed'
+          : variant === 'closed' && members.some((l) => l.def.variant === 'half')
+            ? 'half'
+            : variant
     for (const layer of members) {
       if (!layer.def.variant) {
         layer.node.visible = true
         continue
       }
-      layer.node.visible = hasVariant ? layer.def.variant === variant : variant === 'open'
+      layer.node.visible = layer.def.variant === resolved
     }
   }
 
+  private hasEye(variant: FaceState): boolean {
+    return this.layers.some((l) => l.def.group === 'eyes' && l.def.variant === variant)
+  }
+
   private tickBlink() {
+    if (this.pose !== 'idle' && this.blinkIdx < 0) return
     const dt = Ticker.shared.deltaMS
     this.blinkAcc += dt
-    if (this.eyesClosed) {
+    if (this.blinkIdx >= 0) {
       if (this.blinkAcc >= this.blinkHold) {
-        this.setEyes(false)
+        this.blinkIdx += 1
         this.blinkAcc = 0
-        this.nextBlink = 2400 + Math.random() * 2800
+        const next = this.blinkSeq[this.blinkIdx]
+        if (!next) {
+          this.blinkIdx = -1
+          this.setEyes(this.sheet.poses.idle?.eyes ?? 'open')
+          this.nextBlink = 2400 + Math.random() * 2800
+          return
+        }
+        this.setEyes(next)
+        this.blinkHold = next === 'closed' ? 120 : 55
       }
       return
     }
-    if (this.blinkAcc >= this.nextBlink) {
-      this.setEyes(true)
-      this.blinkAcc = 0
-      this.blinkHold = 110 + Math.random() * 70
-    }
+    if (this.blinkAcc < this.nextBlink) return
+    this.blinkAcc = 0
+    this.blinkSeq = this.hasEye('half') ? ['half', 'closed', 'half'] : ['closed']
+    this.blinkIdx = 0
+    this.setEyes(this.blinkSeq[0])
+    this.blinkHold = this.blinkSeq[0] === 'closed' ? 140 : 55
   }
 
   private async loadSheet(): Promise<PixelSheet> {
