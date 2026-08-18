@@ -1,0 +1,5 @@
+{
+  "name": "尼古喵喵 Niko desktop pet",
+  "install": "pnpm install --frozen-lockfile",
+  "start": "pgrep -x Xvfb >/dev/null 2>&1 || (Xvfb :99 -screen 0 1440x900x24 -nolisten tcp >/tmp/xvfb.log 2>&1 & sleep 1)"
+}
