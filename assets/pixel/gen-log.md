@@ -1,79 +1,61 @@
 # P-Gen log — 80×112 layered pixel puppet
 
-Agent: **P-Gen**. Branch: `agent/p-gen`. Writable path: `assets/pixel/**` only.
+Agent: **P-Gen**. Branch: `agent/p-gen`. Writable: `assets/pixel/**` only.
 
-`AGENTS.md` and `docs/agent-split.md` were not on `master` when this run started (repo still at the initial desktop-pet commit). Work followed the user brief (split doc §3) and the §2-style contract implied by sibling P-Puppet: canvas **80×112**, stage **240×336** (3× nearest), exclusive `eyes` / `mouth` slots, `assets/pixel/tray.png` for the tray icon.
+Same character as PR #6; not a new gen, not a shrink/dither of `尼古喵喵角色图/50.webp`.
 
-## What this is not
+## Repair pass (after QA: 要修)
 
-- Not a shrink / dither of `尼古喵喵角色图/50.webp` or `assets/sprites/idle.png`.
-- No Wave 2, no Live2D layer recut, no `config.json`, no model weights.
-- Did not touch `apps/**`, `packages/**`, `assets/sprites/**`, `assets/live2d-layers/**`, or `docs/**`.
+### A. 眼睛三态遮罩
 
-## Reference
+- Dropped the shared 41 px mask / 5×3 dead-white rectangles.
+- Open/half/closed are two 4×3 tired eyes at `(31–34, 26–28)` and `(43–46, 26–28)`.
+- Open: lid + amber iris + pupil (sclera is near-skin, not `#f8f4ec`).
+- Closed: **only** dark lid pixels (16 px). No `#ecd6c4` fill.
+- Head stores skin in the sockets underneath; blink reveals head/hair, not a skin stamp on hair.
+- Mole `(47, 30)` is on `head.png`, not the eyes slot.
+- Stray eye pixels `(52,22)` / `(26,27)` etc. removed from the eyes layers.
 
-Preferred `assets/ref/official-sheet.png` (then `.webp`) — **missing** on this tree.
+### B. 细尾
 
-Visual identity only (not the pixel source):
+- Drew a continuous 2 px-ish dark grey tail, hip on viewer-left, slight curl. `tail.png` 79 px, bbox height 29.
+- Subtracted that mask from `pants`. Pants `x<22` leftover = 1 px of actual slate at the hip edge `(21,64)`.
 
-- `尼古喵喵角色图/50.webp` — official standing sheet
-- `assets/sprites/idle.png` — knockout of the same character
+### C. 饰品
 
-Locked look: cat-ear girl, messy sage/ash short hair, tired amber eyes, mole under **her left eye** (viewer’s right), oversized cream T, baggy slate pants, olive clogs, thin dark tail. No cigarette drawn on the sprite (smoke stays particles).
+- Recolored hoop/clip candidates (silver via tight chroma; listed dark clip points) to hair / ear-tip. Official sheet has none.
 
-## Image model
+### D. 层卫生
 
-Cursor image generation (pixel-art prompt, 3:4, magenta `#FF00FF` backdrop, official PNGs as reference images).
+- `ears.png` 382 → 212; only the two ear lobes (`y≤13`, left/right, gap 36–42 is hair).
+- Dumped former ear leftovers into `hair` / `hair-front`.
+- Mouth still 4 px closed line / 12 px (4×3) open; `head ∩ mouth-closed = 0`.
+- Shirt mass locked: 545 px `#efe6d8` `(239,230,216)` + 71 shadow. Pants mass 670 px `#4a5560`. Clogs unchanged olive.
 
-Two drafts; **gen-b** kept (deadpan face, hair clip, ear hoops, closer palette). Raw output was 1024×1536 RGB with ~80k colors — “pixel-style” illustration, not a native 80×112 grid. Proof crop (not the official sheet): `_source-gen.png`.
+`preview.png`, `_preview-stack.png`, `tray.png` re-exported from the idle stack.
 
-## Slice pipeline (`_slice.py`)
+## PIL self-test (this pass)
 
-1. Chroma-key magenta + despill.
-2. Letterbox crop to 80:112 (full body, no squash).
-3. `BOX` downsample to **80×112**, binary alpha.
-4. Snap to a 24-color palette taken from the visual brief (`#9aa392` hair, `#efe6d8` shirt, `#4a5560` pants, `#6b7348` clogs) — no ordered dither.
-5. Spatial reclass so hair-shadow olive cannot become shoes on the face, and vice versa.
-6. Paint readable eyes / closed-mouth line / mole on the grid.
-7. Semantic masks on the **same canvas** (position-locked PNG layers).
-8. Exclusive eye/mouth variants: `open | half | closed` and `closed | open`.
+| Check | Result |
+|-------|--------|
+| preview + every layer 80×112, alpha ∈ {0,255} | **yes** |
+| idle stack == preview, mismatch px | **0** |
+| head px / eyes-open / half / closed | 360 / **24** / **24** / **16** |
+| eyes bbox (open) | (31,26)–(46,28) on the face |
+| mouth-closed / mouth-open | 4 px (39,39)–(42,39) / 12 px (39,39)–(42,41) |
+| head ∩ mouth-closed | **0** |
+| blink diff px / bbox | 14 / (31,26)–(46,27) eye band only |
+| blink hair→skin / closed skin over idle hair | **0 / 0** |
+| per open-eye pixel closed-check fails | **0** |
+| tail opaque / bbox height | **79 / 29** (≥60 and ≥20) |
+| pants opaque x&lt;22 | 1 (slate hip, not junk) |
+| ears px | 212 |
+| official 50.webp BOX raw-all RMSE | **214.19** |
+| official NEAREST raw-all RMSE | **215.51** |
+| official BOX knock-union RMSE | 95.6 (same formula on pre-repair preview was 97.1; not a shrink) |
 
-Idle composite opaque pixel count matches `preview.png` (2962 px).
+`sheet.json` contract unchanged: 80×112, scale 3, stage 240×336, stack order, `slots.eyes` open/half/closed, `slots.mouth` closed/open, poses idle/talk/inhale/exhale.
 
-## Deliverables
+## Not claimed
 
-| Path | Role |
-|------|------|
-| `preview.png` | 80×112 idle composite, transparent |
-| `layers/*.png` | aligned 80×112 RGBA parts |
-| `sheet.json` | canvas, z-stack, slots, poses, mouth UV |
-| `_preview-stack.png` | 3× checker strip of every layer + composite |
-| `gen-log.md` | this file |
-| `tray.png` | 32×32 head crop (P-Puppet prefers this over sprites tray) |
-| `_slice.py` | reproducible slice |
-| `_source-gen.png` | 160×224 proof of the model crop |
-
-### Layer stack (back → front)
-
-`tail` → `clogs` → `pants` → `body-shirt` → `hand` → `head` → `hair` → `ears` → **eyes slot** → **mouth slot** → `hair-front`
-
-Head has no baked eyes/mouth. P-Puppet should show exactly one eyes state and one mouth state.
-
-### Poses
-
-| pose | eyes | mouth |
-|------|------|-------|
-| idle | open | closed |
-| talk | open | open |
-| inhale | closed | closed |
-| exhale | half | open |
-
-Mouth UV (texture 0–1, origin top-left): `(0.506, 0.348)`.
-
-## Notes for P-Puppet
-
-- Scale layers with **nearest-neighbor ×3** to fill the 240×336 stage.
-- Anchor `(0.5, 1.0)` — feet on the bottom of the stage.
-- Blink = swap `eyes-open` → `eyes-closed` (or `half`).
-- `setMouthOpen` = swap `mouth-closed` → `mouth-open`.
-- Missing files: placeholders keyed by `layers[].name` still work if they match this list.
+This log is evidence for a re-QA. Merge call is the reviewer’s.

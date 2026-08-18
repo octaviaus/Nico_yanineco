@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""P-Gen: turn the AI pixel-style render into 80×112 aligned layers.
+"""P-Gen repair: keep the same 80×112 puppet, fix masks / tail / extras.
 
-Does NOT shrink the official sheet. Source is the image-model output
-(niko-pixel-gen-b.png), chroma-keyed, box-downsampled, palette-snapped,
-then split on the same 80×112 canvas.
+Does NOT shrink the official sheet. Does NOT regenerate a new character.
+Starts from the existing preview.png (AI-derived pixel puppet) and recuts layers.
 """
 from __future__ import annotations
 
@@ -11,372 +10,351 @@ import json
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
-ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
 LAYERS = OUT / "layers"
-
-# Image-model output (not the official sheet).
-SRC_CANDIDATES = [
-    Path("/opt/cursor/artifacts/assets/niko-pixel-gen-b.png"),
-    Path("/tmp/p-gen/niko-pixel-gen-b.png"),
-    OUT / "_source-gen.png",
-]
-
+OFFICIAL = Path(__file__).resolve().parents[2] / "尼古喵喵角色图" / "50.webp"
 W, H = 80, 112
 
-# Locked to 尼古喵喵设定配色 (docs/visual-optimization-brief.md), not the old grey cat.
-PALETTE = np.array(
-    [
-        [32, 30, 28],  # 0 outline
-        [18, 16, 14],  # 1 ink
-        [236, 214, 196],  # 2 skin
-        [214, 176, 156],  # 3 skin shadow / inner ear
-        [232, 196, 176],  # 4 inner ear light
-        [154, 163, 146],  # 5 hair #9aa392
-        [196, 202, 186],  # 6 hair hi
-        [110, 118, 104],  # 7 hair sh
-        [70, 72, 66],  # 8 ear tip / clip
-        [239, 230, 216],  # 9 shirt #efe6d8
-        [214, 204, 186],  # 10 shirt sh
-        [74, 85, 96],  # 11 pants #4a5560
-        [106, 120, 132],  # 12 pants hi
-        [48, 56, 64],  # 13 pants sh
-        [107, 115, 72],  # 14 shoe #6b7348
-        [78, 84, 52],  # 15 shoe sh
-        [58, 58, 62],  # 16 tail
-        [196, 122, 48],  # 17 iris
-        [120, 68, 28],  # 18 iris dk
-        [28, 20, 16],  # 19 pupil
-        [248, 244, 236],  # 20 eye white
-        [200, 204, 210],  # 21 pierce
-        [92, 64, 52],  # 22 mole
-        [168, 140, 120],  # 23 brow
-    ],
-    dtype=np.int16,
-)
+# Locked palette (brief). Shirt/pants/shoes/hair exact hex where it matters.
+OUTLINE = (32, 30, 28, 255)
+INK = (18, 16, 14, 255)
+SKIN = (236, 214, 196, 255)  # #ecd6c4
+SKIN_SH = (214, 176, 156, 255)
+INNER = (214, 176, 156, 255)
+HAIR = (154, 163, 146, 255)  # #9aa392
+HAIR_HI = (176, 184, 166, 255)
+HAIR_SH = (110, 118, 104, 255)
+EAR_TIP = (70, 72, 66, 255)
+SHIRT = (239, 230, 216, 255)  # #efe6d8
+SHIRT_SH = (214, 204, 186, 255)
+PANTS = (74, 85, 96, 255)  # #4a5560
+PANTS_SH = (48, 56, 64, 255)
+SHOE = (107, 115, 72, 255)  # #6b7348
+SHOE_SH = (78, 84, 52, 255)
+TAIL_C = (58, 58, 62, 255)
+IRIS = (168, 96, 40, 255)
+IRIS_DK = (110, 62, 26, 255)
+PUPIL = (28, 20, 16, 255)
+LID = (42, 34, 30, 255)
+MOLE = (92, 64, 52, 255)
+SCLERA = (232, 214, 196, 255)  # near-skin, not dead white
 
-OUTLINE, INK = 0, 1
-SKIN, SKIN_SH, INNER = 2, 3, 4
-HAIR, HAIR_HI, HAIR_SH, EAR_TIP = 5, 6, 7, 8
-SHIRT, SHIRT_SH = 9, 10
-PANTS, PANTS_HI, PANTS_SH = 11, 12, 13
-SHOE, SHOE_SH, TAIL = 14, 15, 16
-IRIS, IRIS_DK, PUPIL, EYE_WHITE, PIERCE, MOLE, BROW = 17, 18, 19, 20, 21, 22, 23
-
-
-def find_src() -> Path:
-    for p in SRC_CANDIDATES:
-        if p.exists():
-            return p
-    raise SystemExit("missing generated source (niko-pixel-gen-b.png)")
+IDLE_STACK = [
+    "tail.png",
+    "clogs.png",
+    "pants.png",
+    "body-shirt.png",
+    "hand.png",
+    "head.png",
+    "hair.png",
+    "ears.png",
+    "eyes-open.png",
+    "mouth-closed.png",
+    "hair-front.png",
+]
 
 
-def is_magenta(r: np.ndarray, g: np.ndarray, b: np.ndarray) -> np.ndarray:
-    r16, g16, b16 = r.astype(np.int16), g.astype(np.int16), b.astype(np.int16)
-    mag = (r16 > 180) & (b16 > 180) & (g16 < 120) & (np.abs(r16 - b16) < 80)
-    fringe = (r16 > 150) & (b16 > 130) & (g16 < 170) & ((r16 + b16) - 2 * g16 > 70)
-    return mag | fringe
+def load_rgba(path: Path) -> np.ndarray:
+    a = np.array(Image.open(path).convert("RGBA"))
+    a[:, :, 3] = np.where(a[:, :, 3] >= 128, 255, 0)
+    return a
 
 
-def knockout(path: Path) -> Image.Image:
-    im = Image.open(path).convert("RGBA")
-    a = np.array(im)
-    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
-    fg = ~is_magenta(r, g, b)
-    a[~fg, 3] = 0
-    # despill remaining magenta-ish edge towards neighbour luminance
-    edge = fg & is_magenta(np.clip(r + 20, 0, 255), g, np.clip(b + 20, 0, 255))
-    a[edge, 0] = np.minimum(a[edge, 0], a[edge, 1])
-    a[edge, 2] = np.minimum(a[edge, 2], a[edge, 1])
-    return Image.fromarray(a)
+def put(img: np.ndarray, x: int, y: int, rgba: tuple[int, int, int, int]) -> None:
+    if 0 <= x < W and 0 <= y < H:
+        img[y, x] = rgba
 
 
-def crop_letterbox(im: Image.Image) -> Image.Image:
-    a = np.array(im)
-    ys, xs = np.where(a[:, :, 3] > 16)
-    x0, x1 = int(xs.min()), int(xs.max())
-    y0, y1 = int(ys.min()), int(ys.max())
-    pad = 18
-    x0, y0 = max(0, x0 - pad), max(0, y0 - pad)
-    x1, y1 = min(im.width - 1, x1 + pad), min(im.height - 1, y1 + pad)
-    cw, ch = x1 - x0 + 1, y1 - y0 + 1
-    target_aspect = W / H
-    src_aspect = cw / ch
-    if src_aspect < target_aspect:
-        nw = int(ch * target_aspect)
-        extra = nw - cw
-        x0 = max(0, x0 - extra // 2)
-        x1 = min(im.width - 1, x0 + nw - 1)
-        x0 = max(0, x1 - nw + 1)
-    else:
-        nh = int(cw / target_aspect)
-        extra = nh - ch
-        y0 = max(0, y0 - extra // 2)
-        y1 = min(im.height - 1, y0 + nh - 1)
-        y0 = max(0, y1 - nh + 1)
-    return im.crop((x0, y0, x1 + 1, y1 + 1))
+def rgba_eq(p, c) -> bool:
+    return bool(p[3] > 0 and p[0] == c[0] and p[1] == c[1] and p[2] == c[2])
 
 
-def snap_palette(rgb: np.ndarray, alpha: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Map each opaque pixel to nearest palette index. Binary alpha."""
-    h, w = alpha.shape
-    opaque = alpha > 96
-    idx = np.zeros((h, w), dtype=np.int16)
-    pal = PALETTE.astype(np.float32)
-    pix = rgb.astype(np.float32)
-    # slightly weight green so sage hair does not collapse to grey pants
-    wgt = np.array([1.0, 1.15, 1.0], dtype=np.float32)
-    diffs = pix[:, :, None, :] - pal[None, None, :, :]
-    dist = np.sqrt(((diffs * wgt) ** 2).sum(axis=3))
-    idx = dist.argmin(axis=2).astype(np.int16)
-    idx[~opaque] = -1
-    return idx, opaque
+def is_hair_color(p) -> bool:
+    if np.ndim(p) == 1 or (hasattr(p, "shape") and p.shape == (4,)):
+        if int(p[3]) == 0:
+            return False
+        r, g, b = int(p[0]), int(p[1]), int(p[2])
+        return g >= r - 8 and g > b - 4 and 90 < r < 210 and 100 < g < 220 and b < 200
+    r = p[:, :, 0].astype(np.int16)
+    g = p[:, :, 1].astype(np.int16)
+    b = p[:, :, 2].astype(np.int16)
+    a = p[:, :, 3]
+    return (a > 0) & (g >= r - 8) & (g > b - 4) & (r > 90) & (r < 210) & (g > 100) & (g < 220) & (b < 200)
 
 
-def to_rgba(idx: np.ndarray) -> np.ndarray:
-    h, w = idx.shape
-    out = np.zeros((h, w, 4), dtype=np.uint8)
-    ok = idx >= 0
-    out[ok, :3] = PALETTE[idx[ok]]
-    out[ok, 3] = 255
+def is_skin_color(p) -> bool:
+    if np.ndim(p) == 1 or (hasattr(p, "shape") and p.shape == (4,)):
+        if int(p[3]) == 0:
+            return False
+        r, g, b = int(p[0]), int(p[1]), int(p[2])
+        return r > 190 and g > 150 and b > 130 and (r - b) > 12
+    r = p[:, :, 0].astype(np.int16)
+    g = p[:, :, 1].astype(np.int16)
+    b = p[:, :, 2].astype(np.int16)
+    a = p[:, :, 3]
+    return (a > 0) & (r > 190) & (g > 150) & (b > 130) & ((r - b) > 12)
+
+
+def is_metal(p) -> bool:
+    """Silver hoop only — must not match cream shirt #efe6d8."""
+    if int(p[3]) == 0:
+        return False
+    r, g, b = int(p[0]), int(p[1]), int(p[2])
+    mx, mn = max(r, g, b), min(r, g, b)
+    return mn > 170 and (mx - mn) < 16 and abs(r - b) < 10
+
+
+def is_ink(p) -> bool:
+    if p[3] == 0:
+        return False
+    return int(p[0]) + int(p[1]) + int(p[2]) < 110
+
+
+def is_eye_paint(p) -> bool:
+    if p[3] == 0:
+        return False
+    r, g, b = int(p[0]), int(p[1]), int(p[2])
+    if r > 230 and g > 220 and b > 210:
+        return True  # dead white sclera
+    if 140 < r < 220 and 50 < g < 150 and b < 90 and r > g + 20:
+        return True  # iris
+    if r < 45 and g < 35 and b < 30:
+        return True  # pupil
+    return False
+
+
+def neighbor_non_eye(img: np.ndarray, x: int, y: int) -> tuple[int, int, int, int]:
+    for dy, dx in ((0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)):
+        xx, yy = x + dx, y + dy
+        if 0 <= xx < W and 0 <= yy < H and img[yy, xx, 3] > 0 and not is_eye_paint(img[yy, xx]):
+            return tuple(int(v) for v in img[yy, xx])
+    return HAIR
+
+
+def paint_eye_open(img: np.ndarray, x0: int, y0: int) -> list[tuple[int, int]]:
+    """Tired 4×3 eye: near-skin sclera + amber iris. Returns owned pixels."""
+    owned: list[tuple[int, int]] = []
+
+    def p(x, y, c):
+        put(img, x, y, c)
+        owned.append((x, y))
+
+    # y0 = lid, y0+1 = iris row, y0+2 = lower lid (half-lidded / 没精神)
+    for x in range(x0, x0 + 4):
+        p(x, y0, LID)
+        p(x, y0 + 2, LID)
+    p(x0, y0 + 1, LID)
+    p(x0 + 1, y0 + 1, IRIS)
+    p(x0 + 2, y0 + 1, PUPIL)
+    p(x0 + 3, y0 + 1, IRIS_DK)
+    return owned
+
+
+def paint_eye_half(x0: int, y0: int) -> dict[tuple[int, int], tuple[int, int, int, int]]:
+    pix: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for x in range(x0, x0 + 4):
+        pix[(x, y0)] = LID
+        pix[(x, y0 + 1)] = LID
+        pix[(x, y0 + 2)] = IRIS_DK if x in (x0 + 1, x0 + 2) else LID
+    pix[(x0 + 2, y0 + 2)] = PUPIL
+    return pix
+
+
+def paint_eye_closed(x0: int, y0: int) -> dict[tuple[int, int], tuple[int, int, int, int]]:
+    pix: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for x in range(x0, x0 + 4):
+        pix[(x, y0 + 1)] = LID
+        pix[(x, y0 + 2)] = LID
+    return pix
+
+
+def draw_tail(img: np.ndarray) -> list[tuple[int, int]]:
+    """Continuous thin dark tail, viewer-left / character-right hip, slight curl."""
+    # Centerline (x, y), 2px thick (center + 1 toward outside).
+    spine = []
+    # emerge from hip
+    for y, x in [
+        (60, 22),
+        (61, 21),
+        (62, 20),
+        (63, 19),
+        (64, 18),
+        (65, 17),
+        (66, 16),
+        (67, 16),
+        (68, 16),
+        (69, 16),
+        (70, 16),
+        (71, 17),
+        (72, 17),
+        (73, 17),
+        (74, 18),
+        (75, 18),
+        (76, 19),
+        (77, 19),
+        (78, 20),
+        (79, 20),
+        (80, 21),
+        (81, 21),
+        (82, 22),
+        (83, 23),
+        (84, 24),
+        (85, 24),
+        (86, 23),
+        (87, 22),
+    ]:
+        spine.append((x, y))
+    owned = []
+    for i, (x, y) in enumerate(spine):
+        fill = OUTLINE if i == 0 or i == len(spine) - 1 else TAIL_C
+        for dx, dy in ((0, 0), (1, 0), (0, 1)):
+            xx, yy = x + dx, y + dy
+            if 0 <= xx < W and 0 <= yy < H:
+                # do not overwrite the main pants block (x>=22 and typical pants blue)
+                if xx >= 24 and yy >= 66 and yy <= 100:
+                    continue
+                put(img, xx, yy, fill if dx == 0 and dy == 0 else OUTLINE)
+                owned.append((xx, yy))
+        # outline on the outside (left)
+        put(img, x - 1, y, OUTLINE)
+        owned.append((x - 1, y))
+    # unique
+    return list(dict.fromkeys(owned))
+
+
+def color_lock(img: np.ndarray) -> None:
+    """Snap clothing/hair masses toward locked hex without touching the official sheet."""
+    pants_hi = (106, 120, 132)
+    eye_white = (248, 244, 236)
+    pierce = (200, 204, 210)
+    for y in range(H):
+        for x in range(W):
+            p = img[y, x]
+            if p[3] == 0:
+                continue
+            r, g, b = int(p[0]), int(p[1]), int(p[2])
+            # dead eye-white anywhere → near-skin (will be redrawn on eyes)
+            if (r, g, b) == eye_white[:3]:
+                img[y, x] = SKIN if y < 50 else SHIRT
+            if (r, g, b) == pierce[:3] or is_metal(p):
+                img[y, x] = HAIR
+            # pants highlight too light → slate
+            if y > 55 and abs(r - pants_hi[0]) < 12 and abs(g - pants_hi[1]) < 12 and abs(b - pants_hi[2]) < 12:
+                img[y, x] = PANTS
+            # olive junk in hip-left is not a clog
+            if y < 90 and x < 24 and 90 < r < 130 and 95 < g < 130 and b < 90:
+                img[y, x] = TAIL_C if y > 58 else HAIR_SH
+
+
+def strip_accessories(img: np.ndarray) -> None:
+    """No hair clip, no ear hoops (not on 50.webp)."""
+    # Known stray / jewelry from last gen.
+    clip_pts = [
+        (26, 13),
+        (27, 13),
+        (26, 14),
+        (27, 14),
+        (25, 15),
+        (26, 15),
+        (52, 3),
+        (52, 4),
+        (52, 5),
+        (52, 6),
+        (52, 7),
+        (51, 4),
+        (53, 4),
+        (52, 17),
+        (53, 17),
+        (55, 16),
+    ]
+    for x, y in clip_pts:
+        if img[y, x, 3] == 0:
+            continue
+        img[y, x] = EAR_TIP if y < 12 else HAIR
+    # any remaining silver in ear band
+    for y in range(0, 14):
+        for x in range(20, 58):
+            if is_metal(img[y, x]):
+                img[y, x] = HAIR if 34 < x < 46 else EAR_TIP
+    # dark clip-like 2px blocks in bangs (viewer's left)
+    for y in range(10, 22):
+        for x in range(24, 34):
+            if not is_ink(img[y, x]):
+                continue
+            # isolated jewelry, not face outline
+            n_ink = 0
+            n_hair = 0
+            for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                q = img[y + dy, x + dx] if 0 <= y + dy < H and 0 <= x + dx < W else (0, 0, 0, 0)
+                n_ink += int(is_ink(q))
+                n_hair += int(is_hair_color(q))
+            if n_hair >= 2 and n_ink <= 2 and x < 32:
+                img[y, x] = HAIR
+
+
+def clear_old_eyes(img: np.ndarray) -> None:
+    """Remove 5×3 dead-white rectangles and stray iris on hair/outline."""
+    for y in range(18, 34):
+        for x in range(24, 56):
+            if is_eye_paint(img[y, x]):
+                # keep true outline of the face if it's the cheek edge
+                if x <= 26 or x >= 52:
+                    img[y, x] = neighbor_non_eye(img, x, y)
+                    continue
+                img[y, x] = SKIN if is_skin_color(neighbor_non_eye(img, x, y)) or (28 <= x <= 50) else neighbor_non_eye(
+                    img, x, y
+                )
+    # explicit QA dirty points
+    for x, y in ((52, 22), (26, 27), (26, 28), (48, 30), (31, 31), (35, 20), (43, 20), (44, 20)):
+        if img[y, x, 3] > 0:
+            img[y, x] = neighbor_non_eye(img, x, y)
+
+
+def clean_pants_left(img: np.ndarray) -> None:
+    """Drop mis-sliced hair/olive/peach on pants x<22; those become tail or empty."""
+    for y in range(55, 90):
+        for x in range(0, 22):
+            if img[y, x, 3] == 0:
+                continue
+            r, g, b = int(img[y, x, 0]), int(img[y, x, 1]), int(img[y, x, 2])
+            pants_like = abs(r - 74) < 20 and abs(g - 85) < 25 and abs(b - 96) < 25
+            dark = r + g + b < 140
+            if pants_like:
+                continue
+            if dark:
+                continue  # tail / outline stay for draw_tail to overwrite
+            # peach / hair / olive junk
+            img[y, x] = (0, 0, 0, 0)
+
+
+def composite(layers: dict[str, np.ndarray], names: list[str]) -> np.ndarray:
+    out = np.zeros((H, W, 4), dtype=np.uint8)
+    for name in names:
+        lay = layers[name]
+        m = lay[:, :, 3] == 255
+        out[m] = lay[m]
     return out
 
 
-def spatial_fix(idx: np.ndarray) -> np.ndarray:
-    """Keep palette ids in the body band they belong to (hair-shadow ≈ shoe olive)."""
-    idx = idx.copy()
-    yy = np.arange(H)[:, None]
-    yn = yy / H
-    hair_ids = {HAIR, HAIR_HI, HAIR_SH, EAR_TIP, PIERCE, INNER}
-    shoe_ids = {SHOE, SHOE_SH}
-    pants_ids = {PANTS, PANTS_HI, PANTS_SH}
-    # olive in the hair/face band is hair or inner-ear, never a clog
-    idx[(yn < 0.42) & np.isin(idx, list(shoe_ids | pants_ids))] = HAIR_SH
-    # sage in the shoe band is olive, not bangs
-    idx[(yn > 0.84) & np.isin(idx, list(hair_ids))] = SHOE
-    # shirt-white in shoe band stays shoe shadow, not a second hem
-    idx[(yn > 0.88) & ((idx == SHIRT) | (idx == SHIRT_SH) | (idx == EYE_WHITE))] = SHOE_SH
-    return idx
+def mask_from_pts(pts: list[tuple[int, int]]) -> np.ndarray:
+    m = np.zeros((H, W), dtype=bool)
+    for x, y in pts:
+        if 0 <= x < W and 0 <= y < H:
+            m[y, x] = True
+    return m
 
 
-def paint_features(idx: np.ndarray) -> np.ndarray:
-    """Crisp eyes / mouth / mole. Official: mole under LEFT eye (viewer's right)."""
-    idx = idx.copy()
-
-    def setp(x, y, c):
-        if 0 <= x < W and 0 <= y < H and idx[y, x] >= 0:
-            idx[y, x] = c
-
-    # Face = skin below the ear tips, above the collar — not the inner-ear peach.
-    yn = np.arange(H)[:, None] / H
-    xn = np.arange(W)[None, :] / W
-    skin = ((idx == SKIN) | (idx == SKIN_SH)) & (yn > 0.16) & (yn < 0.44) & (xn > 0.30) & (xn < 0.70)
-    ys, xs = np.where(skin)
-    if len(xs) < 8:
-        return idx
-    fx0, fx1 = int(xs.min()), int(xs.max())
-    fy0, fy1 = int(ys.min()), int(ys.max())
-    cx = (fx0 + fx1) // 2
-    face_h = max(8, fy1 - fy0)
-    face_w = max(8, fx1 - fx0)
-
-    ey = fy0 + int(face_h * 0.32)
-    eye_w = max(3, min(6, face_w // 6))
-    eye_h = max(2, min(4, face_h // 8))
-    gap = max(2, face_w // 7)
-    lx0 = cx - gap - eye_w
-    rx0 = cx + gap
-    ly0 = max(fy0 + 1, ey - eye_h // 2)
-
-    for x0 in (lx0, rx0):
-        for yy in range(ly0, ly0 + eye_h + 1):
-            for xx in range(x0, x0 + eye_w + 1):
-                setp(xx, yy, EYE_WHITE)
-        ix, iy = x0 + eye_w // 2, ly0 + max(1, eye_h // 2)
-        for dx, dy in ((0, 0), (-1, 0), (1, 0), (0, 1)):
-            setp(ix + dx, iy + dy, IRIS)
-        setp(ix, iy, PUPIL)
-        setp(ix - 1, iy - 1, EYE_WHITE)
-        for xx in range(x0, x0 + eye_w + 1):
-            setp(xx, ly0, OUTLINE)
-
-    my = min(fy1 - 2, fy0 + int(face_h * 0.70))
-    mx = cx + 1
-    for xx in range(mx - 1, mx + 3):
-        setp(xx, my, OUTLINE)
-
-    setp(rx0 + eye_w // 2, ly0 + eye_h + 2, MOLE)
-    for yy in range(ly0 + eye_h, ly0 + eye_h + 4):
-        for xx in range(lx0 - 1, lx0 + eye_w + 2):
-            if 0 <= xx < W and 0 <= yy < H and idx[yy, xx] == MOLE:
-                idx[yy, xx] = SKIN
-    return idx
-
-
-def classify(idx: np.ndarray) -> dict[str, np.ndarray]:
-    h, w = idx.shape
-    yy, xx = np.ogrid[:h, :w]
-    yn = yy / h
-    xn = xx / w
-    opaque = idx >= 0
-    is_line = opaque & ((idx == OUTLINE) | (idx == INK))
-    is_skin = opaque & ((idx == SKIN) | (idx == SKIN_SH) | (idx == MOLE) | (idx == BROW))
-    is_inner = opaque & (idx == INNER)
-    is_hair = opaque & ((idx == HAIR) | (idx == HAIR_HI) | (idx == HAIR_SH) | (idx == EAR_TIP) | (idx == PIERCE))
-    is_shirt = opaque & ((idx == SHIRT) | (idx == SHIRT_SH))
-    is_pants = opaque & ((idx == PANTS) | (idx == PANTS_HI) | (idx == PANTS_SH))
-    is_shoe = opaque & ((idx == SHOE) | (idx == SHOE_SH))
-    is_tailc = opaque & (idx == TAIL)
-    is_eye = opaque & ((idx == IRIS) | (idx == IRIS_DK) | (idx == PUPIL) | (idx == EYE_WHITE))
-
-    def dilate(m: np.ndarray, n: int = 1) -> np.ndarray:
-        out = m.copy()
-        for _ in range(n):
-            p = np.pad(out, 1, mode="constant")
-            out = out | p[0:-2, 1:-1] | p[2:, 1:-1] | p[1:-1, 0:-2] | p[1:-1, 2:]
-        return out
-
-    def attach(mask: np.ndarray, n: int = 1) -> np.ndarray:
-        return (mask | (dilate(mask, n) & is_line)) & opaque
-
-    clogs = attach(is_shoe & (yn > 0.82), 1)
-    pants = attach(is_pants & (yn > 0.50) & (yn < 0.93), 1)
-    tail = attach(
-        (is_tailc | ((idx == EAR_TIP) & (yn > 0.55)))
-        & (yn > 0.52)
-        & (yn < 0.95)
-        & ((xn < 0.32) | (xn > 0.70))
-        & ~clogs,
-        1,
-    )
-    hand = attach(is_skin & (xn < 0.34) & (yn > 0.32) & (yn < 0.64), 1)
-    ears = attach((is_hair | is_inner) & (yn < 0.19) & (xn > 0.22) & (xn < 0.78), 1)
-    hair_front = attach(is_hair & (yn > 0.10) & (yn < 0.32) & (xn > 0.30) & (xn < 0.70), 1)
-    hair = attach(is_hair & (yn < 0.48) & ~ears, 1)
-    head = attach(is_skin & (yn > 0.14) & (yn < 0.44) & (xn > 0.28) & (xn < 0.74) & ~hand, 1)
-    shirt = attach(is_shirt & (yn > 0.24) & (yn < 0.70) & ~hand, 1)
-    shirt = shirt | attach(is_skin & (xn > 0.60) & (yn > 0.38) & (yn < 0.64), 1)
-
-    eyes = is_eye & (yn > 0.16) & (yn < 0.40) & (xn > 0.30) & (xn < 0.70)
-    mouth = is_line & (yn > 0.30) & (yn < 0.40) & (xn > 0.42) & (xn < 0.58) & ~eyes
-
-    body = {
-        "clogs.png": clogs,
-        "pants.png": pants,
-        "tail.png": tail,
-        "body-shirt.png": shirt,
-        "hand.png": hand,
-        "head.png": head,
-        "hair.png": hair,
-        "hair-front.png": hair_front,
-        "ears.png": ears,
-    }
-    leftover = opaque.copy()
-    for m in list(body.values()) + [eyes, mouth]:
-        leftover &= ~m
-    # Only dump leftovers onto large body plates, and keep them inside that plate's band.
-    cores = ("clogs.png", "pants.png", "body-shirt.png", "head.png")
-    bands = {
-        "clogs.png": (0.82, 1.01),
-        "pants.png": (0.50, 0.94),
-        "body-shirt.png": (0.22, 0.72),
-        "head.png": (0.12, 0.48),
-    }
-    remaining = leftover
-    grow = {k: body[k].copy() for k in cores}
-    while remaining.any():
-        progressed = False
-        for k in cores:
-            y0, y1 = bands[k]
-            nxt = dilate(grow[k], 1) & remaining & (yn >= y0) & (yn <= y1)
-            if nxt.any():
-                body[k] = body[k] | nxt
-                grow[k] = grow[k] | nxt
-                remaining = remaining & ~nxt
-                progressed = True
-        if not progressed:
-            # Last-resort: band-local dump. Never let the shirt claim ear pixels.
-            for k in cores:
-                y0, y1 = bands[k]
-                hit = remaining & (yn >= y0) & (yn <= y1)
-                body[k] = body[k] | hit
-                remaining = remaining & ~hit
-            body["ears.png"] = body["ears.png"] | (remaining & (yn < 0.20))
-            remaining = remaining & ~body["ears.png"]
-            body["hair.png"] = body["hair.png"] | (remaining & (yn < 0.48))
-            remaining = remaining & ~body["hair.png"]
-            body["tail.png"] = body["tail.png"] | (remaining & (yn > 0.50) & ((xn < 0.32) | (xn > 0.70)))
-            break
-
-    body["head.png"] = body["head.png"] & ~eyes & ~mouth
-    body["hair.png"] = body["hair.png"] & ~ears
-    body["body-shirt.png"] = body["body-shirt.png"] & (yn > 0.20) & (yn < 0.72)
-    body["clogs.png"] = body["clogs.png"] & (yn > 0.80)
-    body["pants.png"] = body["pants.png"] & (yn > 0.48) & (yn < 0.95)
-    body["tail.png"] = body["tail.png"] & (yn > 0.48)
-    body["ears.png"] = body["ears.png"] & (yn < 0.22)
-    body["eyes-open.png"] = eyes
-    body["mouth-closed.png"] = mouth
-    return body
-
-
-def save_layer(name: str, rgba: np.ndarray, mask: np.ndarray) -> None:
-    out = np.zeros_like(rgba)
-    out[mask] = rgba[mask]
+def save_layer(name: str, src: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    out = np.zeros_like(src)
+    out[mask] = src[mask]
+    out[:, :, 3] = np.where(mask, 255, 0)
     Image.fromarray(out).save(LAYERS / name, "PNG")
-    print(f"  {name:18s} {int(mask.sum()):5d} px")
-
-
-def make_eye_variants(idx: np.ndarray, eyes_open: np.ndarray) -> dict[str, np.ndarray]:
-    """Paint half/closed only on the open-eye pixels (exclusive slot, no face plate)."""
-    h, w = idx.shape
-    half = eyes_open.copy()
-    closed = eyes_open.copy()
-    rgba_idx_half = idx.copy()
-    rgba_idx_closed = idx.copy()
-    ys, xs = np.where(eyes_open)
-    if len(xs) == 0:
-        return {"eyes-half.png": (half, rgba_idx_half), "eyes-closed.png": (closed, rgba_idx_closed)}
-
-    # Two eyes: split at median x of the open-eye mask, then lid each blob.
-    mid_x = int(np.median(xs))
-    for blob in (xs < mid_x, xs >= mid_x):
-        bys, bxs = ys[blob], xs[blob]
-        if len(bxs) == 0:
-            continue
-        y_mid = int(np.median(bys))
-        for y, x in zip(bys, bxs):
-            if y <= y_mid:
-                rgba_idx_half[y, x] = SKIN if y < y_mid else OUTLINE
-            if True:
-                rgba_idx_closed[y, x] = OUTLINE if y == y_mid or y == y_mid + 1 else SKIN
-    return {
-        "eyes-half.png": (half, rgba_idx_half),
-        "eyes-closed.png": (closed, rgba_idx_closed),
-    }
-
-
-def make_mouth_open(idx: np.ndarray, mouth_closed: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    h, w = idx.shape
-    ys, xs = np.where(mouth_closed)
-    out_idx = idx.copy()
-    mask = mouth_closed.copy()
-    if len(xs) == 0:
-        return mask, out_idx
-    y = int(np.median(ys))
-    x0, x1 = int(xs.min()), int(xs.max())
-    for yy in range(y, y + 3):
-        for xx in range(x0, x1 + 1):
-            if 0 <= xx < w and 0 <= yy < h:
-                mask[yy, xx] = True
-                out_idx[yy, xx] = INK if yy > y else OUTLINE
-    # inner
-    for xx in range(x0 + 1, x1):
-        if 0 <= y + 1 < h:
-            out_idx[y + 1, xx] = PUPIL
-    return mask, out_idx
+    ys, xs = np.where(mask)
+    box = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())) if mask.any() else None
+    print(f"  {name:18s} {int(mask.sum()):5d} px  bbox={box}")
+    return out
 
 
 def checker(w: int, h: int, cell: int = 8) -> np.ndarray:
@@ -388,86 +366,7 @@ def checker(w: int, h: int, cell: int = 8) -> np.ndarray:
     return out
 
 
-def scale_nn(im: Image.Image, k: int) -> Image.Image:
-    return im.resize((im.width * k, im.height * k), Image.Resampling.NEAREST)
-
-
-def main() -> None:
-    src = find_src()
-    print("source", src)
-    LAYERS.mkdir(parents=True, exist_ok=True)
-
-    ko = knockout(src)
-    cropped = crop_letterbox(ko)
-    # keep a small proof that we used the model output, not the official sheet
-    proof = cropped.resize((160, 224), Image.Resampling.BOX).convert("RGBA")
-    proof.save(OUT / "_source-gen.png", "PNG", optimize=True)
-
-    small = cropped.resize((W, H), Image.Resampling.BOX).convert("RGBA")
-    arr = np.array(small)
-    idx, opaque = snap_palette(arr[:, :, :3], arr[:, :, 3])
-    # drop isolated specks
-    for y in range(H):
-        for x in range(W):
-            if idx[y, x] < 0:
-                continue
-            n = 0
-            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                yy, xx = y + dy, x + dx
-                if 0 <= yy < H and 0 <= xx < W and idx[yy, xx] >= 0:
-                    n += 1
-            if n == 0:
-                idx[y, x] = -1
-
-    idx = spatial_fix(idx)
-    idx = paint_features(idx)
-    rgba = to_rgba(idx)
-    Image.fromarray(rgba).save(OUT / "preview.png", "PNG")
-
-    masks = classify(idx)
-    eye_vars = make_eye_variants(idx, masks["eyes-open.png"])
-    mouth_open_mask, mouth_open_idx = make_mouth_open(idx, masks["mouth-closed.png"])
-
-    order = [
-        "tail.png",
-        "clogs.png",
-        "pants.png",
-        "body-shirt.png",
-        "hand.png",
-        "head.png",
-        "hair.png",
-        "ears.png",
-        "eyes-open.png",
-        "mouth-closed.png",
-        "hair-front.png",
-    ]
-    print(f"canvas {W}x{H}")
-    for name in order:
-        save_layer(name, rgba, masks[name])
-
-    # variants use their own index maps
-    half_mask, half_idx = eye_vars["eyes-half.png"]
-    closed_mask, closed_idx = eye_vars["eyes-closed.png"]
-    save_layer("eyes-half.png", to_rgba(half_idx), half_mask)
-    save_layer("eyes-closed.png", to_rgba(closed_idx), closed_mask)
-    save_layer("mouth-open.png", to_rgba(mouth_open_idx), mouth_open_mask)
-
-    # tray: head+ears crop, 32×32 then usable at 16
-    headish = masks["head.png"] | masks["hair.png"] | masks["ears.png"] | masks["hair-front.png"] | masks["eyes-open.png"]
-    ys, xs = np.where(headish)
-    if len(xs):
-        x0, x1 = max(0, xs.min() - 2), min(W - 1, xs.max() + 2)
-        y0, y1 = max(0, ys.min() - 2), min(H - 1, ys.max() + 2)
-        head = Image.fromarray(rgba).crop((x0, y0, x1 + 1, y1 + 1))
-        # pad square
-        side = max(head.size)
-        sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-        sq.paste(head, ((side - head.size[0]) // 2, (side - head.size[1]) // 2), head)
-        sq.resize((32, 32), Image.Resampling.NEAREST).save(OUT / "tray.png", "PNG")
-    else:
-        Image.fromarray(rgba).resize((32, 32), Image.Resampling.NEAREST).save(OUT / "tray.png", "PNG")
-
-    # stacked preview (4× nearest, checker, labeled strip + composite)
+def write_stack_sheet(layers: dict[str, np.ndarray], preview: np.ndarray) -> None:
     names = [
         "tail.png",
         "clogs.png",
@@ -487,52 +386,290 @@ def main() -> None:
     k = 3
     cell_w, cell_h = W * k, H * k
     cols = 5
-    rows = (len(names) + 2 + cols - 1) // cols  # + composite + idle
+    rows = (len(names) + 2 + cols - 1) // cols
     sheet = Image.new("RGBA", (cols * (cell_w + 8) + 8, rows * (cell_h + 24) + 8), (18, 18, 20, 255))
     draw = ImageDraw.Draw(sheet)
 
-    def blit(im: Image.Image, i: int, label: str) -> None:
+    def blit(arr: np.ndarray, i: int, label: str) -> None:
         r, c = divmod(i, cols)
         x = 8 + c * (cell_w + 8)
         y = 8 + r * (cell_h + 24)
         bg = Image.fromarray(checker(cell_w, cell_h, 12))
-        spr = scale_nn(im, k)
+        spr = Image.fromarray(arr).resize((cell_w, cell_h), Image.Resampling.NEAREST)
         bg.paste(spr, (0, 0), spr)
         sheet.paste(bg, (x, y))
         draw.text((x, y + cell_h + 4), label, fill=(220, 220, 220, 255))
 
     for i, name in enumerate(names):
-        blit(Image.open(LAYERS / name), i, name.replace(".png", ""))
-
-    # composite idle
-    idle = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    for name in (
-        "tail.png",
-        "clogs.png",
-        "pants.png",
-        "body-shirt.png",
-        "hand.png",
-        "head.png",
-        "hair.png",
-        "ears.png",
-        "eyes-open.png",
-        "mouth-closed.png",
-        "hair-front.png",
-    ):
-        layer = Image.open(LAYERS / name)
-        idle.alpha_composite(layer)
-    blit(idle, len(names), "composite-idle")
-    blit(Image.fromarray(rgba), len(names) + 1, "preview")
+        blit(layers[name], i, name.replace(".png", ""))
+    blit(composite(layers, IDLE_STACK), len(names), "composite-idle")
+    blit(preview, len(names) + 1, "preview")
     sheet.save(OUT / "_preview-stack.png", "PNG")
 
-    # mouth in texture 0–1, origin top-left (same as sprites/anchor.json)
-    my, mx = np.where(masks["mouth-closed.png"])
-    if len(mx):
-        mouth = {"x": round(float(np.median(mx) / W), 3), "y": round(float(np.median(my) / H), 3)}
-    else:
-        mouth = {"x": 0.52, "y": 0.30}
 
-    sheet_json = {
+def write_tray(preview: np.ndarray, ears: np.ndarray, hair: np.ndarray, head: np.ndarray, bangs: np.ndarray) -> None:
+    headish = (head[:, :, 3] | hair[:, :, 3] | ears[:, :, 3] | bangs[:, :, 3]) > 0
+    ys, xs = np.where(headish)
+    x0, x1 = max(0, int(xs.min()) - 2), min(W - 1, int(xs.max()) + 2)
+    y0, y1 = max(0, int(ys.min()) - 2), min(H - 1, int(ys.max()) + 2)
+    crop = Image.fromarray(preview).crop((x0, y0, x1 + 1, y1 + 1))
+    side = max(crop.size)
+    sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    sq.paste(crop, ((side - crop.size[0]) // 2, (side - crop.size[1]) // 2), crop)
+    sq.resize((32, 32), Image.Resampling.NEAREST).save(OUT / "tray.png", "PNG")
+
+
+def official_rmse(preview: np.ndarray) -> dict[str, float]:
+    src = Image.open(OFFICIAL).convert("RGBA")
+    a = np.array(src)
+    raw = np.array(src.resize((W, H), Image.Resampling.BOX).convert("RGBA"))
+    paper = (a[:, :, 0] >= 245) & (a[:, :, 1] >= 245) & (a[:, :, 2] >= 245)
+    a[paper, 3] = 0
+    knock = np.array(Image.fromarray(a).resize((W, H), Image.Resampling.BOX))
+    near = np.array(src.resize((W, H), Image.Resampling.NEAREST).convert("RGBA"))
+
+    def rmse(p, s, union: bool) -> float:
+        m = (p[:, :, 3] > 0) | (s[:, :, 3] > 0) if union else np.ones(p.shape[:2], dtype=bool)
+        d = p[:, :, :3].astype(np.float32) - s[:, :, :3].astype(np.float32)
+        return float(np.sqrt((d[m] ** 2).mean()))
+
+    return {
+        "box_knock_union": round(rmse(preview, knock, True), 2),
+        "box_raw_all": round(rmse(preview, raw, False), 2),
+        "nearest_raw_all": round(rmse(preview, near, False), 2),
+    }
+
+
+def qa(layers: dict[str, np.ndarray], preview: np.ndarray, sheet: dict) -> dict:
+    report: dict = {}
+    sizes_ok = preview.shape[:2] == (H, W)
+    for name, arr in layers.items():
+        sizes_ok = sizes_ok and arr.shape[:2] == (H, W)
+        au = np.unique(arr[:, :, 3])
+        report[f"alpha_{name}"] = [int(v) for v in au]
+        if not set(int(v) for v in au).issubset({0, 255}):
+            sizes_ok = False
+    au = np.unique(preview[:, :, 3])
+    report["alpha_preview"] = [int(v) for v in au]
+    report["sizes_80x112"] = bool(sizes_ok)
+
+    idle = composite(layers, IDLE_STACK)
+    report["idle_equals_preview"] = bool(np.array_equal(idle, preview))
+    report["idle_mismatch_px"] = int(np.any(idle != preview, axis=2).sum())
+
+    head_px = int((layers["head.png"][:, :, 3] > 0).sum())
+    report["head_px"] = head_px
+    for st in ("eyes-open.png", "eyes-half.png", "eyes-closed.png"):
+        m = layers[st][:, :, 3] > 0
+        ys, xs = np.where(m)
+        report[st] = {
+            "px": int(m.sum()),
+            "bbox": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if m.any() else None,
+        }
+    for st in ("mouth-closed.png", "mouth-open.png"):
+        m = layers[st][:, :, 3] > 0
+        ys, xs = np.where(m)
+        report[st] = {
+            "px": int(m.sum()),
+            "bbox": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if m.any() else None,
+        }
+    head_m = layers["head.png"][:, :, 3] > 0
+    mouth_m = layers["mouth-closed.png"][:, :, 3] > 0
+    report["head_cap_mouth_closed"] = int((head_m & mouth_m).sum())
+
+    closed = composite(
+        layers,
+        [
+            "tail.png",
+            "clogs.png",
+            "pants.png",
+            "body-shirt.png",
+            "hand.png",
+            "head.png",
+            "hair.png",
+            "ears.png",
+            "eyes-closed.png",
+            "mouth-closed.png",
+            "hair-front.png",
+        ],
+    )
+    diff = np.any(closed != preview, axis=2)
+    ys, xs = np.where(diff)
+    report["blink_diff_px"] = int(diff.sum())
+    report["blink_diff_bbox"] = [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if diff.any() else None
+    # hair pixels in idle that changed
+    hair_m = (layers["hair.png"][:, :, 3] > 0) | (layers["hair-front.png"][:, :, 3] > 0)
+    hair_changed = 0
+    hair_to_skin = 0
+    for y, x in zip(ys, xs):
+        if hair_m[y, x] and layers["eyes-open.png"][y, x, 3] == 0:
+            hair_changed += 1
+            if tuple(closed[y, x, :3]) == SKIN[:3]:
+                hair_to_skin += 1
+    report["blink_hair_changed_outside_open_eyes"] = hair_changed
+    report["blink_hair_to_skin"] = hair_to_skin
+
+    # closed must not paint skin over idle hair
+    closed_eye = layers["eyes-closed.png"]
+    skin_flash = 0
+    for y, x in zip(*np.where(closed_eye[:, :, 3] > 0)):
+        if tuple(closed_eye[y, x, :3]) == SKIN[:3] and is_hair_color(preview[y, x]):
+            skin_flash += 1
+    report["closed_skin_over_idle_hair"] = skin_flash
+
+    tail_m = layers["tail.png"][:, :, 3] > 0
+    tys, txs = np.where(tail_m)
+    report["tail_px"] = int(tail_m.sum())
+    report["tail_bbox_h"] = int(tys.max() - tys.min() + 1) if tail_m.any() else 0
+    pants_m = layers["pants.png"][:, :, 3] > 0
+    report["pants_xlt22"] = int((pants_m & (np.arange(W)[None, :] < 22)).sum())
+
+    ears_m = layers["ears.png"][:, :, 3] > 0
+    report["ears_px"] = int(ears_m.sum())
+    report["rmse_official"] = official_rmse(preview)
+    report["sheet_wh"] = [sheet["width"], sheet["height"]]
+    report["sheet_stage"] = sheet["stage"]
+    report["sheet_slots"] = sheet["slots"]
+    return report
+
+
+def opa(arr: np.ndarray) -> np.ndarray:
+    return arr[:, :, 3] == 255
+
+
+def main() -> None:
+    """Patch the existing puppet in place. Do not recut the whole body from scratch."""
+    LAYERS.mkdir(parents=True, exist_ok=True)
+    orig = {p.name: load_rgba(p) for p in sorted(LAYERS.glob("*.png"))}
+    img = composite(orig, IDLE_STACK)
+
+    # Gentle lock: pants highlight + jewelry only.
+    for y in range(H):
+        for x in range(W):
+            if img[y, x, 3] == 0:
+                continue
+            r, g, b = int(img[y, x, 0]), int(img[y, x, 1]), int(img[y, x, 2])
+            if is_metal(img[y, x]):
+                img[y, x] = HAIR if y > 10 else EAR_TIP
+            if (r, g, b) == (248, 244, 236) and 18 <= y <= 34:
+                img[y, x] = SKIN
+            if y > 56 and abs(r - 106) < 12 and abs(g - 120) < 14 and abs(b - 132) < 14:
+                img[y, x] = PANTS
+
+    strip_accessories(img)
+    clean_pants_left(img)
+    clear_old_eyes(img)
+    for y in range(25, 31):
+        for x in list(range(31, 36)) + list(range(43, 48)):
+            if img[y, x, 3] > 0 and not is_hair_color(img[y, x]):
+                img[y, x] = SKIN
+
+    eye_open_pts = paint_eye_open(img, 31, 26) + paint_eye_open(img, 43, 26)
+    put(img, 47, 30, MOLE)
+    tail_pts = draw_tail(img)
+    for x in range(39, 43):
+        img[39, x] = OUTLINE
+
+    yy, xx = np.ogrid[:H, :W]
+    masks = {name: opa(arr) for name, arr in orig.items()}
+
+    eyes_open = mask_from_pts(eye_open_pts)
+    eyes_open &= (yy >= 25) & (yy <= 28) & (xx >= 31) & (xx <= 46)
+    half_map = {}
+    half_map.update(paint_eye_half(31, 26))
+    half_map.update(paint_eye_half(43, 26))
+    closed_map = {}
+    closed_map.update(paint_eye_closed(31, 26))
+    closed_map.update(paint_eye_closed(43, 26))
+    eyes_half = mask_from_pts(list(half_map))
+    eyes_closed = mask_from_pts(list(closed_map))
+
+    mouth_closed = np.zeros((H, W), dtype=bool)
+    mouth_closed[39, 39:43] = True
+    mouth_open = np.zeros((H, W), dtype=bool)
+    mouth_open[39:42, 39:43] = True
+    mouth_open_img = np.zeros_like(img)
+    for y in range(39, 42):
+        for x in range(39, 43):
+            mouth_open_img[y, x] = OUTLINE if y in (39, 41) or x in (39, 42) else INK
+
+    # Ears: keep only the two ear lobes from the original ear mask.
+    ears = masks["ears.png"] & (yy <= 13) & (((xx >= 23) & (xx <= 35)) | ((xx >= 43) & (xx <= 55)))
+    ears &= ~((xx >= 36) & (xx <= 42))
+    dumped = masks["ears.png"] & ~ears
+    hair_front = masks["hair-front.png"] | (dumped & (yy >= 10))
+    hair = (masks["hair.png"] | (dumped & (yy < 10))) & ~ears
+    hair_front &= ~ears
+    hair &= ~ears & ~hair_front
+
+    # Strip jewelry pixels still on ears/hair into hair color (already on img).
+    for m in (ears, hair, hair_front):
+        pass
+
+    hand = masks["hand.png"]
+    shirt = masks["body-shirt.png"]
+    head = masks["head.png"] | mask_from_pts([(47, 30)])
+    for x, y in eye_open_pts:
+        head[y, x] = True
+    head &= ~mouth_closed
+    clogs = masks["clogs.png"] & (yy >= 92)
+    pants = masks["pants.png"] & (yy >= 56) & (xx >= 21) & ~clogs
+    for y, x in zip(*np.where(pants & (xx < 22))):
+        r, g, b = int(img[y, x, 0]), int(img[y, x, 1]), int(img[y, x, 2])
+        if not (abs(r - 74) < 22 and abs(g - 85) < 28 and b >= 70):
+            pants[y, x] = False
+
+    tail = mask_from_pts(tail_pts)
+    tail &= ~clogs
+    pants &= ~tail
+    shirt &= ~hand
+    hair &= ~eyes_open
+    hair_front &= ~eyes_open
+
+    layers: dict[str, np.ndarray] = {}
+    head_src = img.copy()
+    for x, y in eye_open_pts:
+        head_src[y, x] = SKIN
+    head_src[30, 47] = MOLE
+
+    layers["tail.png"] = save_layer("tail.png", img, tail)
+    layers["clogs.png"] = save_layer("clogs.png", img, clogs)
+    layers["pants.png"] = save_layer("pants.png", img, pants)
+    layers["body-shirt.png"] = save_layer("body-shirt.png", img, shirt)
+    layers["hand.png"] = save_layer("hand.png", img, hand)
+    layers["head.png"] = save_layer("head.png", head_src, head)
+    layers["hair.png"] = save_layer("hair.png", img, hair)
+    layers["ears.png"] = save_layer("ears.png", img, ears)
+    layers["eyes-open.png"] = save_layer("eyes-open.png", img, eyes_open)
+
+    half_img = np.zeros_like(img)
+    for (x, y), c in half_map.items():
+        half_img[y, x] = c
+    layers["eyes-half.png"] = save_layer("eyes-half.png", half_img, eyes_half)
+
+    closed_img = np.zeros_like(img)
+    for (x, y), c in closed_map.items():
+        closed_img[y, x] = c
+    layers["eyes-closed.png"] = save_layer("eyes-closed.png", closed_img, eyes_closed)
+
+    layers["mouth-closed.png"] = save_layer("mouth-closed.png", img, mouth_closed)
+    layers["mouth-open.png"] = save_layer("mouth-open.png", mouth_open_img, mouth_open)
+    layers["hair-front.png"] = save_layer("hair-front.png", img, hair_front)
+
+    preview = composite(layers, IDLE_STACK)
+    Image.fromarray(preview).save(OUT / "preview.png", "PNG")
+    write_stack_sheet(layers, preview)
+    write_tray(
+        preview,
+        layers["ears.png"],
+        layers["hair.png"],
+        layers["head.png"],
+        layers["hair-front.png"],
+    )
+
+    my, mx = np.where(mouth_closed)
+    mouth = {"x": round(float(np.median(mx) / W), 3), "y": round(float(np.median(my) / H), 3)}
+    sheet = {
         "name": "niko-miao",
         "version": 1,
         "width": W,
@@ -585,9 +722,10 @@ def main() -> None:
             "exhale": {"eyes": "half", "mouth": "open"},
         },
     }
-    (OUT / "sheet.json").write_text(json.dumps(sheet_json, indent=2) + "\n", encoding="utf-8")
-    print("mouth", mouth)
-    print("wrote", OUT)
+    (OUT / "sheet.json").write_text(json.dumps(sheet, indent=2) + "\n", encoding="utf-8")
+    rep = qa(layers, preview, sheet)
+    print(json.dumps(rep, indent=2))
+    Path("/tmp/p-gen/_qa.json").write_text(json.dumps(rep, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
