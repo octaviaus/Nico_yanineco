@@ -6,8 +6,8 @@ body {
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
   color: #3a4149;
   user-select: none;
-  width: 280px;
-  height: 620px;
+  width: 240px;
+  height: 432px;
   position: relative;
 }
 
@@ -51,8 +51,8 @@ body {
 }
 
 #stage {
-  width: 280px;
-  height: 500px;
+  width: 240px;
+  height: 336px;
   -webkit-app-region: no-drag;
 }
 
