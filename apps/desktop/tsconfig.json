@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "noEmit": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@niko/core": ["../../packages/core/src/index.ts"],
+      "@niko/voice": ["../../packages/voice/src/index.ts"],
+      "@niko/agent": ["../../packages/agent/src/index.ts"]
+    }
+  },
+  "include": ["src", "../../packages/core/src", "../../packages/voice/src", "../../packages/agent/src"]
+}

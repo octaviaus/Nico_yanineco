@@ -1,0 +1,26 @@
+{
+  "name": "@niko/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview"
+  },
+  "dependencies": {
+    "@niko/agent": "workspace:*",
+    "@niko/core": "workspace:*",
+    "@niko/voice": "workspace:*",
+    "msedge-tts": "^2.0.2",
+    "pixi.js": "^7.4.3",
+    "pixi-live2d-display": "0.5.0-beta"
+  },
+  "devDependencies": {
+    "electron": "^35.1.5",
+    "electron-vite": "^3.1.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.5"
+  }
+}

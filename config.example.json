@@ -1,0 +1,23 @@
+{
+  "llm": {
+    "baseURL": "https://api.deepseek.com/v1",
+    "model": "deepseek-chat",
+    "apiKeyEnv": "NIKO_LLM_API_KEY"
+  },
+  "stt": {
+    "provider": "webspeech",
+    "model": "whisper-1",
+    "apiKeyEnv": "NIKO_LLM_API_KEY"
+  },
+  "tts": {
+    "provider": "edge",
+    "voice": "zh-CN-YunxiNeural"
+  },
+  "cursor": {
+    "cli": "agent",
+    "workspace": "D:\\尼古喵喵"
+  },
+  "smoke": {
+    "idlePuffSeconds": 22
+  }
+}

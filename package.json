@@ -1,0 +1,15 @@
+{
+  "name": "niko-meow",
+  "private": true,
+  "version": "0.1.0",
+  "description": "尼古喵喵桌面助手",
+  "scripts": {
+    "dev": "pnpm --filter @niko/desktop dev",
+    "build": "pnpm --filter @niko/desktop build",
+    "preview": "pnpm --filter @niko/desktop preview"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

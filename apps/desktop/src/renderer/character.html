@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>尼古喵喵</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-eval' blob: data:; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src *;" />
+    <link rel="stylesheet" href="./character.css" />
+  </head>
+  <body>
+    <div id="drag">尼古喵喵</div>
+    <div id="bubble" hidden></div>
+    <div id="status"></div>
+    <div id="stage"></div>
+    <form id="chat">
+      <input id="text" type="text" placeholder="懒得说话就打字…" autocomplete="off" />
+      <button type="submit">喷</button>
+    </form>
+    <p id="hint">按住说话 · Ctrl+Shift+M</p>
+    <script type="module" src="./character.ts"></script>
+  </body>
+</html>
