@@ -50,22 +50,42 @@ export async function transcribeAudio(opts: {
 
 export type SynthResult = { buffer: Buffer; mime: string }
 
+const DEFAULT_EDGE_VOICE = 'zh-CN-XiaoyiNeural'
+const DEFAULT_TTS_RATE = 0.85
+
+function resolveTtsRate(rate?: number): number {
+  return typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_TTS_RATE
+}
+
+function toSsmlRate(rate: number): string {
+  if (Math.abs(rate - DEFAULT_TTS_RATE) < 1e-6) return '-20%'
+  const pct = -Math.round((1 - rate) * 100)
+  if (pct === 0) return '+0%'
+  return `${pct > 0 ? '+' : ''}${pct}%`
+}
+
+function toSapiRate(rate: number): number {
+  const mapped = -Math.round((1 - rate) * 10)
+  return Math.min(10, Math.max(-10, mapped))
+}
+
 export async function synthesizeSpeech(opts: {
   config: AppConfig
   text: string
 }): Promise<SynthResult> {
   const provider = opts.config.tts.provider
   const text = opts.text.trim()
+  const rate = resolveTtsRate(opts.config.tts.rate)
   if (!text) return { buffer: Buffer.alloc(0), mime: 'audio/wav' }
 
   try {
     if (provider === 'openai') return await openaiTts(opts.config, text)
     if (provider === 'local') return await localTts(opts.config, text)
-    if (provider === 'sapi') return await sapiTts(text)
-    return await edgeTts(text, opts.config.tts.voice || 'zh-CN-YunxiNeural')
+    if (provider === 'sapi') return await sapiTts(text, rate)
+    return await edgeTts(text, opts.config.tts.voice || DEFAULT_EDGE_VOICE, rate)
   } catch (err) {
     console.warn('[tts] primary failed, fallback sapi:', err)
-    return sapiTts(text)
+    return sapiTts(text, rate)
   }
 }
 
@@ -109,11 +129,11 @@ async function localTts(config: AppConfig, text: string): Promise<SynthResult> {
   }
 }
 
-async function edgeTts(text: string, voice: string): Promise<SynthResult> {
+async function edgeTts(text: string, voice: string, rate: number): Promise<SynthResult> {
   const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts')
   const tts = new MsEdgeTTS()
   await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3)
-  const { audioStream } = tts.toStream(text)
+  const { audioStream } = tts.toStream(text, { rate: toSsmlRate(rate) })
   const chunks: Buffer[] = []
   await new Promise<void>((resolve, reject) => {
     audioStream.on('data', (c: Buffer) => chunks.push(Buffer.from(c)))
@@ -127,18 +147,24 @@ function psQuote(s: string): string {
   return `'${s.replace(/'/g, "''")}'`
 }
 
-async function sapiTts(text: string): Promise<SynthResult> {
+async function sapiTts(text: string, rate = DEFAULT_TTS_RATE): Promise<SynthResult> {
   const dir = path.join(tmpdir(), 'niko-meow')
   await mkdir(dir, { recursive: true })
   const out = path.join(dir, `sapi-${Date.now()}.wav`)
+  const sapiRate = toSapiRate(rate)
   const script = `
 Add-Type -AssemblyName System.Speech
 $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
 try {
-  $zh = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'zh*' } | Select-Object -First 1
-  if ($zh) { $s.SelectVoice($zh.VoiceInfo.Name) }
+  $voices = @($s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'zh*' })
+  $female = $voices | Where-Object { $_.VoiceInfo.Gender -eq [System.Speech.Synthesis.VoiceGender]::Female } | Select-Object -First 1
+  if (-not $female) {
+    $female = $voices | Where-Object { $_.VoiceInfo.Name -match 'Female|女|Huihui|HuiHui|Xiaoxiao|Yaoyao' } | Select-Object -First 1
+  }
+  if ($female) { $s.SelectVoice($female.VoiceInfo.Name) }
+  elseif ($voices.Count -gt 0) { $s.SelectVoice($voices[0].VoiceInfo.Name) }
 } catch {}
-$s.Rate = -2
+$s.Rate = ${sapiRate}
 $s.SetOutputToWaveFile(${psQuote(out)})
 $s.Speak(${psQuote(text.slice(0, 800))})
 $s.Dispose()

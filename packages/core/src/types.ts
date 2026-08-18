@@ -37,6 +37,7 @@ export type AppConfig = {
   tts: {
     provider: TtsProvider
     voice?: string
+    rate?: number
     baseURL?: string
     apiKey?: string
     apiKeyEnv?: string
