@@ -37,6 +37,10 @@ export class SmokeField {
     this.scaleMul = scaleMul
   }
 
+  get isEmpty(): boolean {
+    return this.puffs.length === 0
+  }
+
   setIntensity(v: number) {
     this.intensity = Math.min(1, Math.max(0, v))
   }

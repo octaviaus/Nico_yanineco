@@ -52,7 +52,7 @@ export function createWindows(outDir: string): OverlayWindows {
       preload: preloadPath(outDir),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
       sandbox: false,
       webSecurity: false
     }
