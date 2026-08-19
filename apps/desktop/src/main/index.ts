@@ -1,8 +1,9 @@
 import { app, clipboard, dialog, globalShortcut, ipcMain, shell } from 'electron'
 import { existsSync, readFileSync, readdirSync, statSync, watch } from 'node:fs'
-import { homedir } from 'node:os'
+import { mkdir, unlink, writeFile } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { NikoChat, type AppConfig, type CharacterPose } from '@niko/core'
 import { AGENT_TOOLS, executeTool } from '@niko/agent'
 import { synthesizeSpeech, transcribeAudio } from '@niko/voice'
@@ -23,7 +24,11 @@ let windows: OverlayWindows
 let config: AppConfig
 let chat: NikoChat
 let busy = false
+let speaking = false
+let speakGen = 0
+let audioSeq = 0
 let smokeIntensity = 0.18
+const tempAudioFiles: string[] = []
 
 function sendAll(channel: string, payload: unknown) {
   windows.character.webContents.send(channel, payload)
@@ -75,20 +80,122 @@ function rebuildChat() {
   )
 }
 
+function splitSentences(text: string): string[] {
+  const src = text.trim()
+  if (!src) return []
+  const raw = src.split(/(?<=[。！？…])/)
+  const out: string[] = []
+  let acc = ''
+  for (let i = 0; i < raw.length; i++) {
+    acc += raw[i]
+    const piece = acc.trim()
+    if (!piece) continue
+    const onlyPunct = /^[。！？…\s]+$/.test(piece)
+    if (onlyPunct && i < raw.length - 1) continue
+    out.push(piece)
+    acc = ''
+  }
+  if (acc.trim()) out.push(acc.trim())
+  return out.length ? out : [src]
+}
+
+function extFromMime(mime: string): string {
+  const m = mime.toLowerCase()
+  if (m.includes('wav')) return 'wav'
+  if (m.includes('ogg')) return 'ogg'
+  if (m.includes('webm')) return 'webm'
+  if (m.includes('mp4') || m.includes('m4a') || m.includes('aac')) return 'm4a'
+  return 'mp3'
+}
+
+async function persistAudio(buffer: Buffer, mime: string): Promise<string> {
+  const dir = path.join(tmpdir(), 'niko-meow')
+  await mkdir(dir, { recursive: true })
+  const file = path.join(dir, `tts-${Date.now()}-${++audioSeq}.${extFromMime(mime)}`)
+  await writeFile(file, buffer)
+  tempAudioFiles.push(file)
+  return file
+}
+
+function cleanupTempAudio() {
+  const files = tempAudioFiles.splice(0)
+  const unlinkAll = () => {
+    for (const f of files) void unlink(f).catch(() => undefined)
+  }
+  setTimeout(unlinkAll, 800)
+}
+
+function sendAudioControl(opts: { interrupt?: boolean; final?: boolean }) {
+  windows.character.webContents.send('niko:audio', {
+    base64: '',
+    mime: 'audio/wav',
+    interrupt: opts.interrupt,
+    final: opts.final
+  })
+}
+
+function interruptSpeech() {
+  speakGen += 1
+  speaking = false
+  sendAudioControl({ interrupt: true, final: true })
+  cleanupTempAudio()
+}
+
+async function sendClip(
+  audio: { buffer: Buffer; mime: string },
+  opts: { interrupt: boolean; gen: number }
+) {
+  let filePath: string | undefined
+  let fileUrl: string | undefined
+  let base64 = ''
+  try {
+    filePath = await persistAudio(audio.buffer, audio.mime)
+    fileUrl = pathToFileURL(filePath).href
+  } catch (err) {
+    console.warn('[speak] temp file failed, falling back to base64', err)
+    base64 = audio.buffer.toString('base64')
+  }
+  if (opts.gen !== speakGen) return
+  windows.character.webContents.send('niko:audio', {
+    base64,
+    mime: audio.mime,
+    filePath,
+    fileUrl,
+    interrupt: opts.interrupt
+  })
+}
+
 async function speak(text: string) {
+  const gen = ++speakGen
+  speaking = true
+  sendAudioControl({ interrupt: true })
   setPose('talk')
   windows.character.webContents.send('niko:subtitle', text)
-  try {
-    const audio = await synthesizeSpeech({ config, text })
-    if (audio.buffer.length) {
-      windows.character.webContents.send('niko:audio', {
-        base64: audio.buffer.toString('base64'),
-        mime: audio.mime
-      })
+  const sentences = splitSentences(text)
+  let first = true
+  for (const sentence of sentences) {
+    if (gen !== speakGen) return
+    try {
+      const audio = await synthesizeSpeech({ config, text: sentence })
+      if (gen !== speakGen) return
+      if (!audio.buffer.length) continue
+      await sendClip(audio, { interrupt: first, gen })
+      first = false
+    } catch (err) {
+      console.warn('[speak]', err)
     }
-  } catch (err) {
-    console.warn('[speak]', err)
   }
+  if (gen !== speakGen) return
+  if (first) {
+    speaking = false
+    sendAudioControl({ interrupt: true, final: true })
+    return
+  }
+  sendAudioControl({ final: true })
+}
+
+function maybeIdle() {
+  if (!busy && !speaking) setPose('idle')
 }
 
 async function handleUtterance(text: string) {
@@ -96,6 +203,7 @@ async function handleUtterance(text: string) {
     setStatus('等会儿，这口还没吐完')
     return
   }
+  interruptSpeech()
   busy = true
   setStatus('……')
   setPose('inhale')
@@ -109,8 +217,8 @@ async function handleUtterance(text: string) {
     await speak(`……聊崩了。${msg.slice(0, 80)}`)
   } finally {
     busy = false
-    setTimeout(() => setPose('idle'), 1200)
     setStatus('')
+    if (!speaking) setTimeout(maybeIdle, 400)
   }
 }
 
@@ -148,12 +256,16 @@ function registerIpc() {
   )
 
   ipcMain.on('niko:ptt', (_e, down: boolean) => {
-    setPose(down ? 'inhale' : 'idle')
+    if (down) interruptSpeech()
+    setPose(down ? 'inhale' : speaking ? 'talk' : 'idle')
     setStatus(down ? '吸——说' : '')
   })
 
   ipcMain.on('niko:speaking-end', () => {
-    if (!busy) setPose('idle')
+    if (busy) return
+    speaking = false
+    cleanupTempAudio()
+    maybeIdle()
   })
 
   ipcMain.on('niko:drag', (_e, { dx, dy }: { dx: number; dy: number }) => {
@@ -248,4 +360,6 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  const files = tempAudioFiles.splice(0)
+  for (const f of files) void unlink(f).catch(() => undefined)
 })
