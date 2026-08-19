@@ -2,9 +2,9 @@ import type { CharacterPose } from '@niko/core'
 
 /** Pixel puppet atlas: native art is 240×336 with nearest-neighbor scale 1. */
 
-export const PIXEL_NATIVE_WIDTH = 80
-export const PIXEL_NATIVE_HEIGHT = 112
-export const PIXEL_SCALE = 3
+export const PIXEL_NATIVE_WIDTH = 240
+export const PIXEL_NATIVE_HEIGHT = 336
+export const PIXEL_SCALE = 1
 
 export type PlaceholderShape =
   | { kind: 'rect'; x: number; y: number; w: number; h: number }
@@ -75,7 +75,7 @@ export const DEFAULT_PIXEL_SHEET: PixelSheet = {
   width: PIXEL_NATIVE_WIDTH,
   height: PIXEL_NATIVE_HEIGHT,
   scale: PIXEL_SCALE,
-  mouth: { x: 40, y: 34 },
+  mouth: { x: 120, y: 102 },
   layers: [
     layer('tail', 0, TAIL, [{ kind: 'ellipse', x: 18, y: 78, rx: 10, ry: 16 }]),
     layer('clogs', 1, CLOGS, [
