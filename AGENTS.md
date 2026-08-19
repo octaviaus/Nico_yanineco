@@ -1,6 +1,14 @@
 # Agent 须知
 
-桌宠「尼古喵喵」。视觉主路径是 **240×336 分层像素木偶（scale=1）**，不是 Live2D。工作拆分、文件独占、云端派工见 [docs/agent-split.md](docs/agent-split.md)。
+桌宠「尼古喵喵」。视觉主路径是 **240×336 分层像素木偶（scale=1）**，不是 Live2D。
+
+**开工前必读**：[docs/project-tracker.md](docs/project-tracker.md)（进度、进行中需求、后续方案）。  
+**并行派工契约**：[docs/agent-split.md](docs/agent-split.md)（文件独占、Wave 提示词）。
+
+## 所有 Agent 通用
+
+- **维护推进板**：任务开始 → 把对应 REQ/W15/W2 标 `in_progress`；merge 或验收完成 → 标 `done` 并更新「当前基线」与变更日志。
+- 不要与其他 agent 抢同一文件；抢线时以 `agent-split.md` 的「可写/禁止」为准。
 
 ## Cursor Cloud specific instructions
 
