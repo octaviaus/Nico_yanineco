@@ -15,11 +15,11 @@
   "origin": "top-left",
   "mouth": {
     "x": 0.506,
-    "y": 0.348
+    "y": 0.295
   },
   "cigarette": {
     "x": 0.566,
-    "y": 0.358
+    "y": 0.305
   },
   "preview": "preview.png",
   "tray": "tray.png",
