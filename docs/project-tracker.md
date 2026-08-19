@@ -78,9 +78,9 @@
 | Wave 1 | **完成**（#2 #3 #4 #5 #6 + 文档 #10） |
 | Wave 2 | **未开**（启动条件见 §4） |
 | 下一 REQ | `REQ-002` |
-| 下一 ISS | `ISS-07` |
+| 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
-| 下一 W15 | `W15-07` |
+| 下一 W15 | `W15-08` |
 
 ### 开放中的文档/分支（非产品功能）
 
@@ -136,6 +136,7 @@
 | W15-04 | 透明像素不要触发按住说话 | P1 | `planned` | `character.ts` | `#stage` canvas 任意左键都会 `startHold` |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
 | W15-06 | 像素脸/手继续 polish | P1 | `planned` | **只** `assets/pixel/**` | PR #7 #8 #9 已关未合；当前以 `e7e425a` 为准 |
+| W15-07 | 把设定图落到 `assets/ref/official-sheet.png` | P1 | `planned` | `assets/ref/**`（新建） | 契约要求这张图；仓库里目前只有 `尼古喵喵角色图/` |
 
 历史尝试（不要当现行任务）：PR #7 手+嘴、#8 只接手、#9 眼嘴嵌入脸 —— 均 `CLOSED`。
 
@@ -148,8 +149,9 @@
 1. 合入 **REQ-001**（本板）。
 2. **W15-01** 本机验收（本地）。云端不要假装点过 Electron。
 3. **W15-02** 关闭按钮（小改动，先认领再动 `character.ts` / `main`）。
-4. 用户在意长相再做 **W15-06**；否则进 Wave 2。
-5. Wave 2 按 4.2，**W2-02 与 W2-03 不得并行**（都改 `main/index.ts`）。
+4. **W15-07** 补 `assets/ref/official-sheet.png`（从 `尼古喵喵角色图/` 去底拷入，不要另画一只猫）。
+5. 用户在意长相再做 **W15-06**；否则进 Wave 2。
+6. Wave 2 按 4.2，**W2-02 与 W2-03 不得并行**（都改 `main/index.ts`）。
 
 ### 4.2 Wave 2（启动条件满足后再派工）
 
@@ -195,6 +197,7 @@
 | ISS-04 | README 仍写「有 model3 则 Live2D」；实现已固定像素 | P3 | 文档 | `planned` |
 | ISS-05 | 无 GitHub Issue、无 PR 模板 | P3 | BL-07 | `planned` |
 | ISS-06 | `character.ts` 里 Pixi `antialias: true`（贴图已是 nearest） | P3 | 像素渲染 | `planned` |
+| ISS-07 | 契约要求的 `assets/ref/official-sheet.*` 不在仓库里 | P1 | W15-07 | `planned` |
 
 已处理、只作备忘：PR #10 把占位几何改到 240×336；无 PNG 时才走色块。
 
@@ -209,8 +212,8 @@
 | `packages/voice` | STT / TTS |
 | `packages/agent` | 本机工具 + Cursor CLI 桥 |
 | `assets/pixel/` | 运行时分层木偶（真源产物） |
-| `assets/ref/` | 设定图（`official-sheet.png` 优先） |
-| `尼古喵喵角色图/` | 官方源图，不要删 |
+| `尼古喵喵角色图/` | 官方源图（`50.webp`、`nico_miaomiao_transparent.png`），不要删 |
+| `assets/ref/` | **尚未入库**；`agent-split.md` 希望这里放 `official-sheet.png`（见 ISS-07 / W15-07） |
 | `assets/sprites/` | 旧全身精灵；像素路径不再依赖它显示 |
 | `assets/live2d-layers/` | **停止继续切**；不是当前桌宠主路径 |
 | `docs/agent-split.md` | 并行派工契约（少改） |
@@ -260,6 +263,7 @@
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-19 | ISS-07 | 记下 `assets/ref/` 缺失；设定图仍在 `尼古喵喵角色图/` | cloud · PR #12 |
 | 2026-08-19 | REQ-001 | 推进板开 PR #12；相对链接校验通过 | cloud · `cursor/project-tracker-9e59` |
 | 2026-08-19 | REQ-001 | 初版推进板：Wave1 完成态、W15/W2/backlog、Agent 认领协议 | cloud · `cursor/project-tracker-9e59` |
 
