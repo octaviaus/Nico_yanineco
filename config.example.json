@@ -11,7 +11,8 @@
   },
   "tts": {
     "provider": "edge",
-    "voice": "zh-CN-YunxiNeural"
+    "voice": "zh-CN-XiaoyiNeural",
+    "rate": 0.85
   },
   "cursor": {
     "cli": "agent",
