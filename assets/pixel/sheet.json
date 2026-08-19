@@ -1,0 +1,156 @@
+{
+  "name": "niko-miao",
+  "version": 1,
+  "width": 80,
+  "height": 112,
+  "scale": 3,
+  "stage": {
+    "width": 240,
+    "height": 336
+  },
+  "anchor": {
+    "x": 0.5,
+    "y": 1.0
+  },
+  "origin": "top-left",
+  "mouth": {
+    "x": 0.506,
+    "y": 0.348
+  },
+  "cigarette": {
+    "x": 0.566,
+    "y": 0.358
+  },
+  "preview": "preview.png",
+  "tray": "tray.png",
+  "stack": [
+    "tail",
+    "clogs",
+    "pants",
+    "body-shirt",
+    "hand",
+    "head",
+    "hair",
+    "ears",
+    "eyes",
+    "mouth",
+    "hair-front"
+  ],
+  "layers": [
+    {
+      "name": "tail",
+      "file": "layers/tail.png",
+      "z": 0
+    },
+    {
+      "name": "clogs",
+      "file": "layers/clogs.png",
+      "z": 1
+    },
+    {
+      "name": "pants",
+      "file": "layers/pants.png",
+      "z": 2
+    },
+    {
+      "name": "body-shirt",
+      "file": "layers/body-shirt.png",
+      "z": 3
+    },
+    {
+      "name": "hand",
+      "file": "layers/hand.png",
+      "z": 4
+    },
+    {
+      "name": "head",
+      "file": "layers/head.png",
+      "z": 5
+    },
+    {
+      "name": "hair",
+      "file": "layers/hair.png",
+      "z": 6
+    },
+    {
+      "name": "ears",
+      "file": "layers/ears.png",
+      "z": 7
+    },
+    {
+      "name": "eyes-open",
+      "file": "layers/eyes-open.png",
+      "z": 8,
+      "slot": "eyes",
+      "state": "open"
+    },
+    {
+      "name": "eyes-half",
+      "file": "layers/eyes-half.png",
+      "z": 8,
+      "slot": "eyes",
+      "state": "half"
+    },
+    {
+      "name": "eyes-closed",
+      "file": "layers/eyes-closed.png",
+      "z": 8,
+      "slot": "eyes",
+      "state": "closed"
+    },
+    {
+      "name": "mouth-closed",
+      "file": "layers/mouth-closed.png",
+      "z": 9,
+      "slot": "mouth",
+      "state": "closed"
+    },
+    {
+      "name": "mouth-open",
+      "file": "layers/mouth-open.png",
+      "z": 9,
+      "slot": "mouth",
+      "state": "open"
+    },
+    {
+      "name": "hair-front",
+      "file": "layers/hair-front.png",
+      "z": 10
+    }
+  ],
+  "slots": {
+    "eyes": {
+      "default": "open",
+      "states": [
+        "open",
+        "half",
+        "closed"
+      ]
+    },
+    "mouth": {
+      "default": "closed",
+      "states": [
+        "closed",
+        "open"
+      ]
+    }
+  },
+  "poses": {
+    "idle": {
+      "eyes": "open",
+      "mouth": "closed"
+    },
+    "talk": {
+      "eyes": "open",
+      "mouth": "open"
+    },
+    "inhale": {
+      "eyes": "closed",
+      "mouth": "closed"
+    },
+    "exhale": {
+      "eyes": "half",
+      "mouth": "open"
+    }
+  }
+}
