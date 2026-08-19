@@ -40,8 +40,8 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）**现在不要开**。
 
 | 项 | 值 |
 |----|----|
-| 源画布 | `80×112`，透明底 |
-| 放大 | `3×`，Pixi `SCALE_MODES.NEAREST` |
+| 源画布 | `240×336`，透明底 |
+| 放大 | `1×`，Pixi `SCALE_MODES.NEAREST` |
 | 舞台 | `240×336` |
 | 角色窗 | `240×456` |
 | 锚点 | `(0.5, 1)` 脚贴底 |
@@ -61,13 +61,13 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）**现在不要开**。
 
 ```json
 {
-  "width": 80,
-  "height": 112,
-  "scale": 3,
+  "width": 240,
+  "height": 336,
+  "scale": 1,
   "scaleMode": "nearest",
   "origin": "top-left",
   "anchor": { "x": 0.5, "y": 1 },
-  "mouth": { "x": 0.52, "y": 0.28 },
+  "mouth": { "x": 0.546, "y": 0.205 },
   "layers": ["clogs", "pants", "tail", "body-shirt", "head", "hair", "ears"],
   "eyes": ["open", "half", "closed"],
   "mouths": ["closed", "open", "smoke"]
@@ -92,7 +92,7 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）**现在不要开**。
 
 ## 3. P-Gen · AI 生成像素形象（核心）
 
-这不是「手绘 Aseprite」，也不是 `Image.resize(80,112)`。必须用**生成模型**出像素风角色，再切成对齐的层。
+这不是「手绘 Aseprite」，也不是 `Image.resize(240,336)`。必须用**生成模型**出像素风角色，再切成对齐的层。
 
 ### 可写
 
@@ -113,14 +113,14 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）**现在不要开**。
    - Secrets 里的图像 API（OpenAI Images、同类）；
    - 本机若有生成工具也可用。
 3. **禁止当成品：** 仅 PIL/近邻缩小设定图、仅调色板抖动、用另一只猫/兽形顶替。量化只能作为生成后再收边的**后处理**。
-4. **选 1 张** idle 合成图，去底，限色到 16–22 色，最近邻落到 **80×112**，存 `assets/pixel/preview.png`。
+4. **选 1 张** idle 合成图，去底，限色到 16–22 色，最近邻落到 **240×336**，存 `assets/pixel/preview.png`。
 5. **表情差分（同一姿势、同一身体）：** 只重绘眼/嘴区域（inpaint 或局部 img2img）得到 blink / mouth-open / mouth-smoke 三张全身对齐图，不要另生成一张脸。
 6. **切层：** 用脚本按颜色/区域从 idle 抽出身体层；眼、嘴用「差分图 − idle」得到。叠放后必须能还原 preview。导出 `_preview-stack.png` 给验收。
 7. **量嘴坐标** 写入 `sheet.json`。从头+耳裁 `tray.png`（16 或 32px，最近邻）。
 
 ### 完成标准
 
-- 必选层都在，透明底，80×112。
+- 必选层都在，透明底，240×336。
 - `_preview-stack.png` 和 `preview.png` 对得上，不是四只不同的角色。
 - `gen-log.md` 写清模型与提示词。闭眼能认出痣、耳、垮裤、洞洞鞋。
 - 提交标题：`assets(pixel): AI-generated layered pixel puppet`
@@ -187,7 +187,7 @@ API/工具都不可用：在 PR 说明里写清缺什么密钥，**不要**用�
 公共头 +：
 
 ```
-你是 P-Gen。按 docs/agent-split.md 第 3 节：用图像生成模型做出像素风猫耳少女，再切成 80×112 对齐分层。
+你是 P-Gen。按 docs/agent-split.md 第 3 节：用图像生成模型做出像素风猫耳少女，再切成 240×336 对齐分层。
 参考图：优先 assets/ref/official-sheet.png，否则 official-sheet.webp。禁止把该图直接缩小/抖动当成成品。
 交付 assets/pixel/preview.png、layers/*.png、sheet.json、_preview-stack.png、gen-log.md。
 提交标题：assets(pixel): AI-generated layered pixel puppet

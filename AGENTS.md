@@ -1,6 +1,6 @@
 # Agent 须知
 
-桌宠「尼古喵喵」。视觉主路径是 **80×112 分层像素木偶**，不是 Live2D。工作拆分、文件独占、云端派工见 [docs/agent-split.md](docs/agent-split.md)。
+桌宠「尼古喵喵」。视觉主路径是 **240×336 分层像素木偶（scale=1）**，不是 Live2D。工作拆分、文件独占、云端派工见 [docs/agent-split.md](docs/agent-split.md)。
 
 ## Cursor Cloud specific instructions
 
