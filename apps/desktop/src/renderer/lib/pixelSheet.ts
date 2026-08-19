@@ -1,6 +1,6 @@
 import type { CharacterPose } from '@niko/core'
 
-/** Pixel puppet atlas: native art is 80×112, drawn at integer 3× → 240×336. */
+/** Pixel puppet atlas: native art is 240×336 with nearest-neighbor scale 1. */
 
 export const PIXEL_NATIVE_WIDTH = 80
 export const PIXEL_NATIVE_HEIGHT = 112

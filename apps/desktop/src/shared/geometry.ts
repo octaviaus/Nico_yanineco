@@ -1,4 +1,4 @@
-/** Pixel puppet stage is 80×112 art at integer 3×. Window chrome sits under the stage. */
+/** Pixel puppet stage uses native 240×336 art at scale 1. Window chrome sits under the stage. */
 
 export const CHARACTER_WINDOW_WIDTH = 240
 export const CHARACTER_WINDOW_HEIGHT = 432
