@@ -86,7 +86,7 @@
 
 | 工作 | 分支 / PR | 说明 |
 |------|-----------|------|
-| 本推进板 | `cursor/project-tracker-9e59`（本文件） | **认领中** · `REQ-001` |
+| 本推进板 | `cursor/project-tracker-9e59` · PR #12 | **认领中** · `REQ-001` |
 | 较早的推进板草稿 | PR #11 `cursor/project-tracker-45ab` | 同主题初稿；本文件为后续真源。合入后可关 #11 |
 
 ---
@@ -101,7 +101,7 @@
 |------|------|
 | 状态 | `in_progress` |
 | 来源 | 用户：要一份进度 + 需求 + 后续方案，云端/本地 Agent 共同维护 |
-| 负责人 | cloud · `cursor/project-tracker-9e59` |
+| 负责人 | cloud · `cursor/project-tracker-9e59` · PR #12 |
 | 可写 | `docs/project-tracker.md`、`AGENTS.md`、`docs/agent-split.md`、`README.md` |
 | 完成标准 | `master` 上能读到本板；`AGENTS.md` 要求开工读/收工写；`agent-split.md` 把本文件列为所有代号可写 |
 | 验证 | 文档链接指向的仓库文件存在；不改运行时代码 |
@@ -260,6 +260,7 @@
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-19 | REQ-001 | 推进板开 PR #12；相对链接校验通过 | cloud · `cursor/project-tracker-9e59` |
 | 2026-08-19 | REQ-001 | 初版推进板：Wave1 完成态、W15/W2/backlog、Agent 认领协议 | cloud · `cursor/project-tracker-9e59` |
 
 ---
