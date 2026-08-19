@@ -1,7 +1,7 @@
 import type { CharacterPose } from '@niko/core'
 
 export interface CharacterRenderer {
-  readonly kind: 'sprite' | 'live2d'
+  readonly kind: 'sprite' | 'live2d' | 'pixel'
   setPose(pose: CharacterPose): void
   setMouthOpen(value: number): void
   setSmokeParam(value: number): void

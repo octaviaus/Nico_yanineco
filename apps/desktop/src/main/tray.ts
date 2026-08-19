@@ -14,9 +14,16 @@ export function createTray(opts: {
   onClear: () => void
   onToggle: () => void
 }): Tray {
+  const pixelTray = path.join(assetsDir(), 'pixel', 'tray.png')
   const iconPath = path.join(assetsDir(), 'sprites', 'tray.png')
   const fallbackIdle = path.join(assetsDir(), 'sprites', 'idle.png')
-  const chosen = existsSync(iconPath) ? iconPath : existsSync(fallbackIdle) ? fallbackIdle : null
+  const chosen = existsSync(pixelTray)
+    ? pixelTray
+    : existsSync(iconPath)
+      ? iconPath
+      : existsSync(fallbackIdle)
+        ? fallbackIdle
+        : null
   const image = chosen
     ? nativeImage.createFromPath(chosen).resize({ width: 16, height: 16 })
     : nativeImage.createFromDataURL(FALLBACK_PNG)

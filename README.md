@@ -44,9 +44,9 @@ $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
 
 ## Live2D
 
-v1 用 `assets/sprites` 贴图（官方全身设定去底后的猫耳少女）。把 Cubism 导出的 `*.model3.json` 放到 `assets/live2d/`，并放入官方 Cubism Core（`assets/live2d/runtime/live2dcubismcore.min.js`），启动时会自动切到 Live2D。分层原图和参数表见 [docs/live2d-spec.md](docs/live2d-spec.md)。
+当前默认是像素木偶（`assets/pixel` 分层，舞台 240×336；缺层时用色块占位）。把 Cubism 导出的 `*.model3.json` 放到 `assets/live2d/`，并放入官方 Cubism Core（`assets/live2d/runtime/live2dcubismcore.min.js`），Live2D 仍保留资产管线，本阶段不自动切换。分层原图和参数表见 [docs/live2d-spec.md](docs/live2d-spec.md)。
 
-设定图在 `尼古喵喵角色图/`。桌宠当前走精灵图；分层已按方案 A 切好（不画烟，粒子吐烟），没有 Cubism Editor 时不必继续。头/发交界还不干净，有 PSD 再修。
+设定图在 `尼古喵喵角色图/`。桌宠当前走像素木偶；分层已按方案 A 切好（不画烟，粒子吐烟），没有 Cubism Editor 时不必继续。头/发交界还不干净，有 PSD 再修。
 
 ## Cursor 桥
 
