@@ -4,73 +4,41 @@ Agent: **P-Gen**. Branch: `cursor/p-gen-face-align-d2ba`. Writable: `assets/pixe
 
 Same character as PR #6; not a new gen, not a shrink/dither of `尼古喵喵角色图/50.webp`.
 
-## Follow-up (face proportion — eyes / mouth position)
+Agent: **P-Gen**. Branch: `cursor/p-gen-face-align-d2ba`. Writable: `assets/pixel/**` only.
 
-After visual QA: eyes and mouth read too large and too low vs the head. Same character; only `eyes-*`, `mouth-*`, `head`, `hair`, `hair-front` touched (+ previews). Hand fix kept.
+Same character as PR #6; not a new gen, not a shrink/dither of `尼古喵喵角色图/50.webp`.
 
-### Changes
+## This PR — hand only
 
-- **Eyes** moved up **4 px**: bbox `(31,22)–(46,24)` (was `(31,26)–(46,28)`). Still two 4×3 tired eyes, 24/24/16 px open/half/closed.
-- **Mouth closed** moved up **5 px**: 4 px line at `y34` `(39–42)` (was `y39`).
-- **Mouth open** resized and moved: **7×4 / 26 px**, bbox `(38,33)–(44,36)` (was 9×5 / 41 px at the chin). Lip + dark cavity; **25 px** visible over stack (`hair-front` overlap 1 px).
-- **Head**: filled old mouth socket at `y39` with skin; cut new mouth socket at `y34` / open bbox. Mole `(47,30)` unchanged.
-- **`sheet.json` mouth UV** `y`: `0.348 → 0.304` (closed-mouth center at `y34`; `x` still `0.506`).
+Per review: **eyes and mouth are out of scope** for this pass (reverted to `master`; see deferred list below). Only the hand QA fix ships here.
 
-Idle stack re-exported. **idle mismatch = 0**. Blink diff still 14 px (eye band only); hair→skin **0**. Tail/shirt/pants/hand counts unchanged.
-
-| Check | Result |
-|-------|--------|
-| eyes-open bbox | `(31,22)–(46,24)` |
-| mouth-closed | 4 px at `y34` |
-| mouth-open | 26 px, bbox `(38,33)–(44,36)` |
-| head ∩ mouth-closed | **0** |
-| hand opaque / `r+g+b==0` | **62 / 0** |
-| idle mismatch px | **0** |
-| mole `(47,30)` | `(92,64,52)` |
-| tail / ears / shirt cream / pants slate | 79 / 212 / 545 / 670 |
-
-## Follow-up (hand / mouth, after PR #6 + PixelRenderer)
-
-Only two leftovers from post-merge QA. Eyes / tail / ears / shirt / pants / clogs / mole were not redrawn.
-
-### A. Hand — drop opaque `#000000`
+### Hand — drop opaque `#000000`
 
 - `layers/hand.png` had 25 opaque pixels with `r+g+b==0` (read as a black glove/whip).
-- Recolored those to nearby skin / outline: fill `#ecd6c4` `(236,214,196)` and `#e8d4c4`-adjacent shade `(214,176,156)`, edge `(32,30,28)`. No cigarette, whip, or jewelry drawn.
-- Opaque count still **62**. `hand` opaque `r+g+b==0` count **0**.
-- Lower palm `y56–65` is skin + outline only. `tray.png` not touched: the former blacks sit below the head crop (`y≥56`; head crop ends `y53`).
+- Recolored to nearby skin / outline: `#ecd6c4` `(236,214,196)`, shade `(214,176,156)`, edge `(32,30,28)`. No cigarette, whip, or jewelry.
+- Opaque still **62**. `r+g+b==0` = **0**.
+- `tray.png` unchanged (former blacks at `y≥56`, below head crop).
 
-### B. Mouth — enlarge `mouth-open`
-
-- Was 12 px (4×3) at `(39–42, 39–41)`; 3× scale made talking invisible.
-- Redrew in place: bbox `(36,38)–(44,42)` = **9×5**, **41 px**. Lip ring `(140,88,80)`, cavity `(28,20,16)` / mid `(48,28,28)`.
-- `mouth-closed` still the 4 px line `(39–42, 39)`. `head ∩ mouth-closed = 0`.
-- `mouth-open ∩ hair-front = 0` (41 px visible). No new face generated.
-- `sheet.json` mouth UV left at `{x: 0.506, y: 0.348}` (closed-mouth center). Open centroid would be ~`(0.500, 0.357)`; closed line did not move.
-
-Idle stack re-exported to `preview.png` and `_preview-stack.png`. Mismatch **0**.
-
-## PIL self-test (this follow-up)
+`preview.png` / `_preview-stack.png` re-exported from idle stack (master eyes/mouth/head + fixed hand). **idle mismatch = 0**. `sheet.json` unchanged vs `master`.
 
 | Check | Result |
 |-------|--------|
-| preview + every layer 80×112, alpha ∈ {0,255} | **yes** |
-| idle stack == preview, mismatch px | **0** |
 | hand opaque / `r+g+b==0` | **62 / 0** |
-| mouth-closed | 4 px `(39,39)–(42,39)` |
-| mouth-open | **41 px**, bbox `(36,38)–(44,42)` = 9×5 |
-| head ∩ mouth-closed | **0** |
-| mouth-open ∩ hair-front | **0** |
-| head / eyes-open / half / closed | 360 / **24** / **24** / **16** |
-| eyes bbox (open) | (31,26)–(46,28) |
-| blink hair→skin / closed skin over idle hair | unchanged (eyes layers not edited) |
-| tail opaque / bbox height | **79 / 29** |
-| mole `(47,30)` | `(92,64,52)` on `head` |
-| ears px | 212 |
-| shirt cream `#efe6d8` / pants slate `#4a5560` | 545 / 670 |
-| `sheet.json` width/height/scale/stack/slots/poses | **unchanged** |
+| idle mismatch px | **0** |
+| eyes / mouth / head / sheet.json | **same as `master`** |
 
-`sheet.json` contract unchanged: 80×112, scale 3, stage 240×336, stack order, `slots.eyes` open/half/closed, `slots.mouth` closed/open, poses idle/talk/inhale/exhale.
+## Deferred — eyes & mouth (follow-up, not this PR)
+
+Visual QA noted proportion / placement issues. **Do not merge partial tweaks** until a dedicated pass:
+
+1. **Eyes** — position vs face (currently `(31,26)–(46,28)`); tired 4×3 slots stay.
+2. **Mouth closed** — line at `y39`; may need vertical shift vs chin.
+3. **Mouth open** — master is 12 px (4×3); talk visibility at scale 3 needs a designed size/placement, not ad-hoc resize.
+4. **`sheet.json` mouth UV** — update only after mouth art is final.
+
+## Prior experiments (not shipped)
+
+Tried mouth enlargement (9×5) and face realignment (eyes y22–24, mouth y34). Reverted per review — eyes/mouth stay at `master` until deferred pass above.
 
 ## Prior repair pass (after QA: 要修) — kept for history
 
