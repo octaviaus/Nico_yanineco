@@ -1,8 +1,33 @@
 # P-Gen log — 80×112 layered pixel puppet
 
-Agent: **P-Gen**. Branch: `cursor/p-gen-hand-mouth-d2ba` (same puppet as merged PR #6). Writable: `assets/pixel/**` only.
+Agent: **P-Gen**. Branch: `cursor/p-gen-face-align-d2ba`. Writable: `assets/pixel/**` only.
 
 Same character as PR #6; not a new gen, not a shrink/dither of `尼古喵喵角色图/50.webp`.
+
+## Follow-up (face proportion — eyes / mouth position)
+
+After visual QA: eyes and mouth read too large and too low vs the head. Same character; only `eyes-*`, `mouth-*`, `head`, `hair`, `hair-front` touched (+ previews). Hand fix kept.
+
+### Changes
+
+- **Eyes** moved up **4 px**: bbox `(31,22)–(46,24)` (was `(31,26)–(46,28)`). Still two 4×3 tired eyes, 24/24/16 px open/half/closed.
+- **Mouth closed** moved up **5 px**: 4 px line at `y34` `(39–42)` (was `y39`).
+- **Mouth open** resized and moved: **7×4 / 26 px**, bbox `(38,33)–(44,36)` (was 9×5 / 41 px at the chin). Lip + dark cavity; **25 px** visible over stack (`hair-front` overlap 1 px).
+- **Head**: filled old mouth socket at `y39` with skin; cut new mouth socket at `y34` / open bbox. Mole `(47,30)` unchanged.
+- **`sheet.json` mouth UV** `y`: `0.348 → 0.304` (closed-mouth center at `y34`; `x` still `0.506`).
+
+Idle stack re-exported. **idle mismatch = 0**. Blink diff still 14 px (eye band only); hair→skin **0**. Tail/shirt/pants/hand counts unchanged.
+
+| Check | Result |
+|-------|--------|
+| eyes-open bbox | `(31,22)–(46,24)` |
+| mouth-closed | 4 px at `y34` |
+| mouth-open | 26 px, bbox `(38,33)–(44,36)` |
+| head ∩ mouth-closed | **0** |
+| hand opaque / `r+g+b==0` | **62 / 0** |
+| idle mismatch px | **0** |
+| mole `(47,30)` | `(92,64,52)` |
+| tail / ears / shirt cream / pants slate | 79 / 212 / 545 / 670 |
 
 ## Follow-up (hand / mouth, after PR #6 + PixelRenderer)
 
