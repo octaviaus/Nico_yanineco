@@ -5,5 +5,5 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "exclude": ["src/vad.check.ts"]
+  "exclude": ["src/vad.check.ts", "src/streaming.check.ts"]
 }

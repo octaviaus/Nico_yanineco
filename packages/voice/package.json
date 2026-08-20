@@ -10,7 +10,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:vad": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/vad.check.ts"
+    "test:vad": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/vad.check.ts",
+    "test:streaming": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/streaming.check.ts"
   },
   "dependencies": {
     "@niko/core": "workspace:*"

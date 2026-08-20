@@ -12,6 +12,13 @@
       "enabled": false,
       "engine": "silero",
       "modelPath": ""
+    },
+    "streaming": {
+      "enabled": false,
+      "mode": "segmented",
+      "endpoint": "",
+      "minChunkMs": 800,
+      "overlapMs": 120
     }
   },
   "tts": {

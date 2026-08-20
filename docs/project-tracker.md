@@ -151,7 +151,7 @@
 | Agent | Story | 何时 | 独占 | 状态 |
 |-------|--------|------|------|------|
 | P0-E | ST-STATE-03 + ST-VOICE-02 | **现在** | `character.ts`、`main/index.ts` | `planned` |
-| P0-F | ST-VOICE-03 | **现在** ∥ E | `packages/voice/**` | `planned` |
+| P0-F | ST-VOICE-03 | **现在** ∥ E | `packages/voice/**` | `in_progress` · cloud · `cursor/voice-streaming-asr-a62d` |
 | P0-G | ST-VIZ-03 | 等 E 合入 | `character.ts`、`main` 转发 | `blocked` |
 | P0-H | Shell hide + 点击穿透 | 等 G 合入 | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `blocked` |
 
@@ -402,6 +402,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | P0-F | 认领 ST-VOICE-03（packages/voice 分段/流式 ASR）；桌面接线不做 | cloud · `cursor/voice-streaming-asr-a62d` |
 | 2026-08-20 | P0 | 第二批提示词对齐当前 master：现在派 E+F；G 等 E；H 等 G。见 pm-epics §6.2 | cloud |
 | 2026-08-20 | W15-02 | **合入 PR #14** `2a16e25`。W15-02/03/04 → `done`。`character.ts`/`main` 释放；可派 P0-E/F | 用户指示合入 |
 | 2026-08-20 | W15-02 | 本机验收：02/04 **过**；03 空闲嘴边细烟用户**接受**。ISS-01 降为 deferred。#14 已 merge master | 用户口头 + cloud · PR #14 |
