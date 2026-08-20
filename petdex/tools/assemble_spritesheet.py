@@ -35,20 +35,24 @@ ATLAS_H = ROWS * CELL_H  # 2288
 MARGIN = 10
 SPRITE_VERSION = 2
 
-# Row index, state name, expected frames, source file, vertical mode.
+# Row index, state name, expected source frames, source file, vertical mode.
 ROWS_SPEC: list[tuple[int, str, int, str, str]] = [
-    (0, "idle", 6, "petdex-row-idle.png", "feet"),
+    (0, "idle", 8, "petdex-row-idle.png", "feet"),
     (1, "running-right", 8, "petdex-row-running-right.png", "feet"),
     (2, "running-left", 8, "petdex-row-running-left.png", "feet"),
     (3, "waving", 4, "petdex-row-waving.png", "feet"),
     (4, "jumping", 5, "petdex-row-jumping.png", "jump"),
     (5, "failed", 8, "petdex-row-failed.png", "feet"),
     (6, "waiting", 6, "petdex-row-waiting.png", "feet"),
-    (7, "running", 6, "petdex-row-running.png", "feet"),
+    (7, "running", 8, "petdex-row-running.png", "feet"),
     (8, "review", 6, "petdex-row-review.png", "feet"),
     (9, "look-directions-a", 8, "petdex-row-look-a.png", "feet"),
     (10, "look-directions-b", 8, "petdex-row-look-b.png", "feet"),
 ]
+
+# Rows whose unique poses should be held (visually slower gait / gestures).
+HOLD_EVEN = {"running-right", "running-left"}
+HOLD_STRETCH = {"waving", "jumping", "waiting", "review", "failed"}
 
 
 def _components(im: Image.Image) -> list[list[int]]:
@@ -189,6 +193,43 @@ def place_jump_row(parts: list[tuple[Image.Image, int, int]]) -> list[Image.Imag
     return cells
 
 
+def hold_stretch(frames: list[Image.Image], target: int = COLS) -> list[Image.Image]:
+    """Hold poses so a short row still fills the atlas and plays slower."""
+    if not frames:
+        return frames
+    held: list[Image.Image] = []
+    for f in frames:
+        held.append(f)
+        held.append(f)
+    if len(held) == target:
+        return held
+    if len(held) > target:
+        idxs = [round(i * (len(held) - 1) / (target - 1)) for i in range(target)]
+        return [held[i] for i in idxs]
+    while len(held) < target:
+        held.append(frames[-1])
+    return held
+
+
+def hold_even_frames(frames: list[Image.Image]) -> list[Image.Image]:
+    """Keep every other pose and hold it twice (slower walk)."""
+    if len(frames) < 4:
+        return hold_stretch(frames)
+    keys = frames[0::2][:4]
+    out: list[Image.Image] = []
+    for f in keys:
+        out.extend([f, f])
+    return out[:COLS]
+
+
+def apply_slow(name: str, frames: list[Image.Image]) -> list[Image.Image]:
+    if name in HOLD_EVEN:
+        return hold_even_frames(frames)
+    if name in HOLD_STRETCH:
+        return hold_stretch(frames)
+    return frames[:COLS]
+
+
 def row_cells(src: Path, count: int, mode: str) -> list[Image.Image]:
     im = Image.open(src)
     parts = split_columns(im, count)
@@ -229,6 +270,23 @@ def write_pet_json(path: Path) -> None:
         "description": "A sleepy cat-eared girl in an oversized tee who smokes and watches you code.",
         "spritesheetPath": "spritesheet.webp",
         "spriteVersionNumber": SPRITE_VERSION,
+        "animation": {
+            "autoDetectFrames": True,
+            "idleSlowdown": 8,
+            "states": {
+                "idle": {"row": 0, "durationMs": 280, "lastFrameDurationMs": 420},
+                "running-right": {"row": 1, "durationMs": 220},
+                "running-left": {"row": 2, "durationMs": 220},
+                "waving": {"row": 3, "durationMs": 260},
+                "jumping": {"row": 4, "durationMs": 220, "lastFrameDurationMs": 340},
+                "failed": {"row": 5, "durationMs": 260},
+                "waiting": {"row": 6, "durationMs": 280},
+                "running": {"row": 7, "durationMs": 280, "lastFrameDurationMs": 400},
+                "review": {"row": 8, "durationMs": 280},
+                "look-directions-a": {"row": 9, "durationMs": 240},
+                "look-directions-b": {"row": 10, "durationMs": 260},
+            },
+        },
     }
     path.write_text(json.dumps(pet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -243,10 +301,11 @@ def write_zip(pack: Path) -> Path:
 
 def write_preview_gifs(rows: list[list[Image.Image]], qa: Path) -> None:
     previews = {
-        "idle": (0, 110),
-        "waving": (3, 140),
-        "jumping": (4, 120),
-        "look-a": (9, 160),
+        "idle": (0, 280),
+        "running": (7, 280),
+        "waving": (3, 260),
+        "jumping": (4, 220),
+        "look-a": (9, 240),
     }
     for name, (idx, ms) in previews.items():
         palettes = [checkerboard(f, cell=8).convert("RGB") for f in rows[idx]]
@@ -288,7 +347,7 @@ def main() -> None:
         if not src.exists():
             raise SystemExit(f"missing strip: {src}")
         print(f"row {idx} {name} <- {filename}")
-        frames = row_cells(src, count, mode)
+        frames = apply_slow(name, row_cells(src, count, mode))
         assembled.append(frames)
         for i, frame in enumerate(frames):
             frame.save(QA / "frames" / f"{idx:02d}-{name}-{i}.png", "PNG")

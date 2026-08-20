@@ -18,7 +18,7 @@ petdex/niko-miao.zip          # 根目录就是 pet.json + spritesheet.webp
 
 - 表尺寸 **1536×2288**（v2，8×11，每格 192×208）
 - `spriteVersionNumber`: **2**
-- 行 0–8：`idle` · `running-right` · `running-left` · `waving` · `jumping` · `failed` · `waiting` · `running` · `review`
+- 行 0–8：`idle`（点烟）· `running-right` · `running-left` · `waving` · `jumping` · `failed` · `waiting` · `running`（干活抽烟）· `review`
 - 行 9–10：`look-directions-a`（八向转身）· `look-directions-b`（视线）
 - 未用格留空（透明）
 
