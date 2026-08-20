@@ -1,0 +1,12 @@
+{"type":"system","subtype":"init","apiKeySource":"login","cwd":"/Users/user/project","session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff","model":"Claude 4 Sonnet","permissionMode":"default"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Read README.md, search TODOs, then patch a file"}]},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll read the README.md file"}]},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"tool_call","subtype":"started","call_id":"toolu_read_1","tool_call":{"readToolCall":{"args":{"path":"README.md"}}},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"tool_call","subtype":"completed","call_id":"toolu_read_1","tool_call":{"readToolCall":{"args":{"path":"README.md"},"result":{"success":{"content":"# Project\n","isEmpty":false,"totalLines":2}}}},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"tool_call","subtype":"started","call_id":"toolu_grep_1","tool_call":{"grepToolCall":{"args":{"pattern":"TODO","path":"."}}},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"tool_call","subtype":"completed","call_id":"toolu_grep_1","tool_call":{"grepToolCall":{"args":{"pattern":"TODO"},"result":{"success":{"content":"src/index.ts:12: TODO"}}}},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"request","subtype":"tool_permission","tool":"writeToolCall","message":"Allow writing summary.txt?"}
+{"type":"tool_call","subtype":"started","call_id":"toolu_write_1","tool_call":{"writeToolCall":{"args":{"path":"summary.txt","fileText":"# README Summary\n"}}},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"tool_call","subtype":"completed","call_id":"toolu_write_1","tool_call":{"writeToolCall":{"args":{"path":"summary.txt"},"result":{"success":{"path":"/Users/user/project/summary.txt","linesCreated":2}}}},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Done. Summary is in summary.txt"}]},"session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
+{"type":"result","subtype":"success","duration_ms":5234,"is_error":false,"result":"Done. Summary is in summary.txt","session_id":"c6b62c6f-7ead-4fd6-9922-e952131177ff"}
