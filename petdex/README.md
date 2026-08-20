@@ -4,22 +4,47 @@
 
 **不修改** `apps/`、`packages/`、`assets/`、`scripts/`、`尼古喵喵角色图/` 或任何原桌宠代码。原项目继续用 240×336 分层木偶。
 
-## 这一步完成了什么（设定图）
+## 可导入包
 
-真源仍是仓库里已有的官方图，这里只做拷贝级派生：
+把整个文件夹丢给对方项目即可：
+
+```text
+petdex/niko-miao/
+├── pet.json
+└── spritesheet.webp   # 也有 spritesheet.png 备份
+```
+
+- 表尺寸 **1536×1872**（8×9，每格 192×208）
+- 行：`idle` · `running-right` · `running-left` · `waving` · `jumping` · `failed` · `waiting` · `running` · `review`
+- 未用格留空（透明）
+
+```json
+{
+  "id": "niko-miao",
+  "displayName": "尼古喵喵",
+  "description": "A sleepy cat-eared girl in an oversized tee who smokes and watches you code.",
+  "spritesheetPath": "spritesheet.webp",
+  "spriteVersionNumber": 1
+}
+```
+
+对照图：`qa/contact-sheet.png`。
+
+## 设定图（身份锁）
 
 | 文件 | 作用 |
 |------|------|
-| `ref/official-sheet.png` | `尼古喵喵角色图/50.webp` 去白底、去水印后的透明立绘（身份锁） |
-| `ref/official-face.png` | 头+耳特写，用来锁痣、眼、发色 |
-| `ref/pixel-idle.png` | `nico_miaomiao_transparent.png` 裁边后的像素 idle |
-| `ref/petdex-canonical-idle.png` | 按 PetDex 格比例做的 chibi idle（派生，不是替身） |
-| `ref/petdex-canonical-idle-192x208.png` | 同一角色放进 **192×208** 单格 |
-| `ref/identity-sheet.png` | 四联对照：官方 / 像素 / chibi / 单格 |
-| `ref/identity.json` | 辨识点与路径 |
+| `ref/official-sheet.png` | `尼古喵喵角色图/50.webp` 去白底（真源） |
+| `ref/official-face.png` | 头+耳特写 |
+| `ref/pixel-idle.png` | 已有像素 idle |
+| `ref/identity-sheet.png` | 四联对照 |
+| `ref/identity.json` | 辨识点 |
 
-原图路径只读，没有改过。
+## 重跑
 
-## 下一步（还没做）
+```bash
+python3 petdex/tools/prepare_ref.py
+python3 petdex/tools/assemble_spritesheet.py
+```
 
-9 行动画精灵表 + `pet.json`。做的时候继续只写 `petdex/`。
+只写 `petdex/`。
