@@ -3,9 +3,9 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 import { resolveApiKey, type AppConfig } from '@niko/core'
-import { joinUrl } from './transcribe.js'
+import { joinUrl } from './streaming.js'
 
-export { transcribeAudio, type Transcript } from './transcribe.js'
+export { transcribeAudio, type Transcript } from './streaming.js'
 
 export type SynthResult = { buffer: Buffer; mime: string }
 

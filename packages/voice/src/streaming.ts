@@ -1,7 +1,17 @@
 import type { AppConfig, SttProvider } from '@niko/core'
-import { transcribeAudio, type Transcript } from './transcribe.js'
 
-export type { Transcript }
+export type Transcript = { text: string }
+
+/** Keep aligned with `@niko/core` `resolveApiKey` (local copy so strip-types tests do not load the core barrel). */
+function resolveApiKey(cfg: { apiKey?: string; apiKeyEnv?: string }): string {
+  if (cfg.apiKey?.trim()) return cfg.apiKey.trim()
+  const names = [cfg.apiKeyEnv, 'NIKO_LLM_API_KEY', 'OPENAI_API_KEY'].filter(Boolean) as string[]
+  for (const name of names) {
+    const v = process.env[name]
+    if (v?.trim()) return v.trim()
+  }
+  return ''
+}
 
 /**
  * Optional segmented / streaming ASR (ST-VOICE-03).
@@ -104,6 +114,49 @@ export type MaybeStreamingTranscript = Transcript & {
 const DEFAULT_MIN_CHUNK_MS = 800
 const DEFAULT_OVERLAP_MS = 120
 const DEFAULT_PCM_RATE = 16000
+
+export function joinUrl(baseURL: string, pathName: string): string {
+  const base = baseURL.replace(/\/+$/, '')
+  const suffix = pathName.startsWith('/') ? pathName : `/${pathName}`
+  if (base.endsWith('/v1') && suffix.startsWith('/v1/')) return `${base}${suffix.slice(3)}`
+  return `${base}${suffix}`
+}
+
+/** Same OpenAI-compat POST used by full-utterance `transcribeAudio`. */
+export async function transcribeAudio(opts: {
+  config: AppConfig
+  buffer: Buffer
+  mime: string
+  filename?: string
+}): Promise<Transcript> {
+  const stt = opts.config.stt
+  const provider = stt.provider
+  if (provider === 'webspeech') {
+    throw new Error('webspeech 在渲染进程处理')
+  }
+  const baseURL =
+    stt.baseURL ||
+    (provider === 'local' ? 'http://127.0.0.1:9000/v1' : opts.config.llm.baseURL)
+  const apiKey = resolveApiKey(stt.apiKey ? stt : opts.config.llm)
+  const url = joinUrl(baseURL, '/audio/transcriptions')
+
+  const form = new FormData()
+  const blob = new Blob([new Uint8Array(opts.buffer)], { type: opts.mime || 'audio/webm' })
+  form.append('file', blob, opts.filename ?? 'speech.webm')
+  form.append('model', stt.model || 'whisper-1')
+  form.append('language', 'zh')
+
+  const headers: Record<string, string> = {}
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`
+
+  const res = await fetch(url, { method: 'POST', headers, body: form })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`STT ${res.status}: ${text.slice(0, 400)}`)
+  }
+  const data = (await res.json()) as { text?: string }
+  return { text: (data.text ?? '').trim() }
+}
 
 type ResolvedStreaming = {
   enabled: boolean
@@ -306,7 +359,7 @@ class ReadyStreaming implements StreamingTranscriber {
   private readonly minChunkMs: number
   private readonly overlapMs: number
   private readonly listeners = new Set<(seg: SegmentTranscript) => void>()
-  private pcmPending = new Int16Array(0)
+  private pcmPending: Int16Array = new Int16Array(0)
   private pcmRate = DEFAULT_PCM_RATE
   private parts: string[] = []
   private segmentIndex = 0
@@ -375,8 +428,13 @@ class ReadyStreaming implements StreamingTranscriber {
       { buffer: wav, mime: 'audio/wav', filename: 'segment.wav' },
       isFinal
     )
-    this.pcmPending =
-      overlapSamples > 0 ? this.pcmPending.slice(-overlapSamples) : new Int16Array(0)
+    if (overlapSamples > 0) {
+      const next = new Int16Array(overlapSamples)
+      next.set(this.pcmPending.subarray(this.pcmPending.length - overlapSamples))
+      this.pcmPending = next
+    } else {
+      this.pcmPending = new Int16Array(0)
+    }
     return result
   }
 
@@ -436,14 +494,14 @@ function toInt16Pcm(chunk: AudioChunk): { samples: Int16Array; sampleRate: numbe
   const sampleRate =
     chunk.sampleRate && chunk.sampleRate > 0 ? Math.round(chunk.sampleRate) : DEFAULT_PCM_RATE
   if (chunk.pcm instanceof Int16Array) {
-    return { samples: Int16Array.from(chunk.pcm), sampleRate }
+    return { samples: copyInt16(chunk.pcm), sampleRate }
   }
   if (chunk.pcm instanceof Float32Array) {
     return { samples: floatToInt16(chunk.pcm), sampleRate }
   }
   const buf = Buffer.from(chunk.buffer ?? [])
-  const samples = new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2))
-  return { samples: Int16Array.from(samples), sampleRate }
+  const view = new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2))
+  return { samples: copyInt16(view), sampleRate }
 }
 
 function floatToInt16(pcm: Float32Array): Int16Array {
@@ -455,8 +513,14 @@ function floatToInt16(pcm: Float32Array): Int16Array {
   return out
 }
 
+function copyInt16(src: ArrayLike<number>): Int16Array {
+  const out = new Int16Array(src.length)
+  out.set(src)
+  return out
+}
+
 function concatInt16(a: Int16Array, b: Int16Array): Int16Array {
-  if (a.length === 0) return Int16Array.from(b)
+  if (a.length === 0) return copyInt16(b)
   if (b.length === 0) return a
   const out = new Int16Array(a.length + b.length)
   out.set(a, 0)
