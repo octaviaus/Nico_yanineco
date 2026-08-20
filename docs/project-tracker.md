@@ -150,7 +150,7 @@ P0-E ST-STATE-03 + ST-VOICE-02 · cloud · `cursor/pet-phase-wiring-barge-in-109
 
 | Agent | Story | 何时 | 独占 | 状态 |
 |-------|--------|------|------|------|
-| P0-E | ST-STATE-03 + ST-VOICE-02 | **现在** | `character.ts`、`main/index.ts` | `in_progress` · cloud · `cursor/pet-phase-wiring-barge-in-1098` |
+| P0-E | ST-STATE-03 + ST-VOICE-02 | **现在** | `character.ts`、`main/index.ts` | `in_progress` · cloud · `cursor/pet-phase-wiring-barge-in-1098` · [PR #23](https://github.com/octaviaus/Nico_yanineco/pull/23) |
 | P0-F | ST-VOICE-03 | **现在** ∥ E | `packages/voice/**` | `planned` |
 | P0-G | ST-VIZ-03 | 等 E 合入 | `character.ts`、`main` 转发 | `blocked` |
 | P0-H | Shell hide + 点击穿透 | 等 G 合入 | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `blocked` |
