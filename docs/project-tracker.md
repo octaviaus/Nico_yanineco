@@ -96,7 +96,7 @@
 
 ## 2. 进行中需求
 
-P0-E ST-STATE-03 + ST-VOICE-02 · cloud · `cursor/pet-phase-wiring-barge-in-1098`。路 B 已合入。
+P0-E ST-STATE-03 + ST-VOICE-02 · cloud · `cursor/pet-phase-wiring-barge-in-1098` · **本机过**（打断 `Speaking→Listening`）。等合入 `master` 再标 `done`。
 
 **现在派（2 个 Cloud Agent，并行）：** P0-E + P0-F。提示词 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) §6.2。
 **先别派：** P0-G（等 E）、P0-H（等 G）、W2-Stream / Clone / SFX。
@@ -150,7 +150,7 @@ P0-E ST-STATE-03 + ST-VOICE-02 · cloud · `cursor/pet-phase-wiring-barge-in-109
 
 | Agent | Story | 何时 | 独占 | 状态 |
 |-------|--------|------|------|------|
-| P0-E | ST-STATE-03 + ST-VOICE-02 | **现在** | `character.ts`、`main/index.ts` | `in_progress` · cloud · `cursor/pet-phase-wiring-barge-in-1098` · [PR #23](https://github.com/octaviaus/Nico_yanineco/pull/23) |
+| P0-E | ST-STATE-03 + ST-VOICE-02 | **现在** | `character.ts`、`main/index.ts` | `in_progress` · cloud · `cursor/pet-phase-wiring-barge-in-1098` · [PR #23](https://github.com/octaviaus/Nico_yanineco/pull/23) · **本机过** |
 | P0-F | ST-VOICE-03 | **现在** ∥ E | `packages/voice/**` | `planned` |
 | P0-G | ST-VIZ-03 | 等 E 合入 | `character.ts`、`main` 转发 | `blocked` |
 | P0-H | Shell hide + 点击穿透 | 等 G 合入 | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `blocked` |
@@ -402,6 +402,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | P0-E | 本机验收通过：连说两句打断，日志 `Speaking→Listening`，嘴不残留。PR #23 尚未合入 | 用户口头 |
 | 2026-08-20 | P0-E | 认领 ST-STATE-03 + ST-VOICE-02（接线+打断）；分支 `cursor/pet-phase-wiring-barge-in-1098` | cloud |
 | 2026-08-20 | P0 | 第二批提示词对齐当前 master：现在派 E+F；G 等 E；H 等 G。见 pm-epics §6.2 | cloud |
 | 2026-08-20 | W15-02 | **合入 PR #14** `2a16e25`。W15-02/03/04 → `done`。`character.ts`/`main` 释放；可派 P0-E/F | 用户指示合入 |
