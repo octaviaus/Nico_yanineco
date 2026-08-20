@@ -70,67 +70,46 @@
 | 项 | 值 |
 |----|-----|
 | 默认分支 | `master` |
-| 当前 tip | `046c8d1` — Merge PR #13（桌宠开源生态调研文档） |
+| 当前 tip | `ed5f63b` — Merge PR #12（推进板）；其前为 #19 #18 #17 #16 #15 |
 | 像素资产 | `e7e425a` — 240×336 分层 idle（`assets/pixel/`，见 `gen-log.md`） |
 | 视觉主路径 | 像素木偶；`createCharacterRenderer` **固定**走 `PixelRenderer`（Live2D 接管是长期项 BL-02） |
 | 舞台 / 角色窗 | 舞台 `240×336`；窗 `240×432`（`geometry.ts`） |
 | TTS 默认 | Edge `zh-CN-XiaoyiNeural`，`rate: 0.85` |
 | Wave 1 | **完成**（#2 #3 #4 #5 #6 + 文档 #10） |
-| Wave 1.5 路 B | **代码完成、待合入** · PR #14（draft，CLEAN）；本机点一下尚未做 |
-| P0 第一批 | **PR 已开、待合入**：#15 A · #16 B · #17 C · #18 D（互不重叠） |
-| Wave 2 / P0 第二批 | **未开**（等 #14 + 第一批合入后再派 E/F/G/H） |
+| 推进板 / Epic | **完成** · PR #12 已合入；重复草稿 #11 已关未合 |
+| P0 第一批 | **完成**：#15 A · #16 B · #17 C · #18 D 已在 `master` |
+| PetDex 旁路 | **完成** · PR #19 `petdex/`（桌宠运行时不读） |
+| Wave 1.5 路 B | **代码完成、待合入** · PR #14（draft）；本机点一下尚未做 |
+| Wave 2 / P0 第二批 | **未开**（等 #14 合入后再派 E/F/G/H） |
 | 下一 REQ | `REQ-003` |
 | 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
 | 下一 W15 | `W15-08` |
 
-### 开放 PR / 远程分支（2026-08-20 快照；`master` = `046c8d1`）
+### 开放 PR / 远程分支（2026-08-20 合入后）
 
-全部仍是 **draft**，GitHub 相对 `master` 均为 `MERGEABLE` / `CLEAN`。仓库无 CI。处理方式见「建议」列。
+| PR | 分支 | 内容 | 建议 |
+|----|------|------|------|
+| #14 | `cursor/close-idle-puff-opaque-ptt-5089` | 路 B：× / 停 idle puff / opaque PTT | **本机点一下后再合**。现在 `master` 已有推进板，#14 里那份过期 `docs/project-tracker.md` **必须删掉**，否则冲突 |
+| — | 已合入功能分支（#12/#15/#16/#17/#18/#19 及 `cursor/desktop-pet-landscape-doc-df18`、`cursor/project-tracker-45ab`） | 残留 | **可删远程分支** |
 
-| PR | 分支 | 内容 | 相对 master | 建议 |
-|----|------|------|-------------|------|
-| #12 | `cursor/project-tracker-9e59` | 推进板 + P0/P1 拆解 + 派工提示词 | +9 / −1 | **先合**（文档真源） |
-| #11 | `cursor/project-tracker-45ab` | #12 的旧草稿（少 Epic、少提示词） | +1 / −1 | **关掉**，不要合 |
-| #15 | `cursor/pet-phase-state-machine-4e93` | P0-A `petPhase.ts` | +2 / −0 | **可合**（只 `packages/core`） |
-| #16 | `cursor/pixel-pose-layer-mapping-56d6` | P0-B pose→层 | +1 / −0 | **可合**（只 PixelRenderer / pixelSheet） |
-| #17 | `cursor/optional-vad-8399` | P0-C 可选 VAD | +1 / −0 | **可合**（只 `packages/voice` + `config.example.json`） |
-| #18 | `cursor/agent-phase-cli-parse-359c` | P0-D AgentPhase + CLI 解析 | +1 / −0 | **可合**（只 `packages/agent`） |
-| #14 | `cursor/close-idle-puff-opaque-ptt-5089` | 路 B：× / 停 idle puff / opaque PTT | +2 / −1 | **本机点一下后再合**；丢掉过期 `docs/project-tracker.md` |
-| #19 | `cursor/petdex-ref-sheet-854e` | 旁路：PetDex/Codex 精灵表，只加 `petdex/` | +7 / −0 | **你决定**；桌宠运行时不读它，不要拷进 `assets/pixel/` |
-| — | `cursor/desktop-pet-landscape-doc-df18` | 已合入的 #13 残留分支 | 已合 | **删远程分支** |
-| #13 | （已合入） | 景观文档 | `046c8d1` | 已在 `master` |
-
-#15/#16/#17/#18/#19 **彼此文件零重叠**，可按任意顺序合。唯一会打架的文件是 `docs/project-tracker.md`（#11 ∩ #12 ∩ #14）。
+不要再开第二套 P0-A～D。不要合已关闭的 #11。
 
 ---
 
 ## 2. 进行中需求
 
-产品功能不要从对话里「感觉有人在做」就写进来。下列均有分支 + PR。
+只剩路 B。REQ-001 / REQ-002 已随 PR #12 合入，详见 §3。
 
-### REQ-001 · 建立项目推进板
-
-| 字段 | 内容 |
-|------|------|
-| 状态 | `in_progress` |
-| 来源 | 用户：要一份进度 + 需求 + 后续方案，云端/本地 Agent 共同维护 |
-| 负责人 | cloud · `cursor/project-tracker-9e59` · PR #12 |
-| 可写 | `docs/project-tracker.md`、`AGENTS.md`、`docs/agent-split.md`、`README.md` |
-| 完成标准 | `master` 上能读到本板；`AGENTS.md` 要求开工读/收工写；`agent-split.md` 把本文件列为所有代号可写 |
-| 验证 | 文档链接指向的仓库文件存在；不改运行时代码 |
-
-完成合入后：本卡片改为 `done`，从本节删除详细表，只在 §3 Wave 表留一行。
-
-### REQ-002 · P0/P1 Epic / Story 拆解
+### REQ-W15-B · 路 B UX（W15-02/03/04）
 
 | 字段 | 内容 |
 |------|------|
 | 状态 | `in_progress` |
-| 来源 | 用户：读景观 §6，基于 P0/P1 生成 Epic 与 Story |
-| 负责人 | cloud · `cursor/project-tracker-9e59` · PR #12 |
-| 文档 | [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) |
-| 完成标准 | 每个 Story 有 R01–R19 引用、Wave/依赖、agent-split 可写路径；**未改**冻结契约 |
+| 来源 | 体验收尾：关闭入口、停 idle puff、透明不 PTT |
+| 负责人 | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14 |
+| 完成标准 | 合入 `master` 且本机点过 × / 22s 不再喷 / 透明不录音 |
+| 阻塞 | 无头云不能代替本机点一下；合入前必须丢掉 PR 里过期的 `docs/project-tracker.md` |
 
 ---
 
@@ -148,7 +127,7 @@
 | W1-06 | 按句 TTS 队列 + RMS 口型 | PR #5 `aa3d52b` | `done` |
 | W1-07 | Cloud Agent 环境与拆分文档 | `15fc40a` | `done` |
 | W1-08 | 契约文档对齐 240×336 @ scale=1 | PR #10 `5a17d58` | `done` |
-| W1-09 | 推进板（本文件） | REQ-001 | `in_progress` |
+| W1-09 | 推进板（本文件） | REQ-001 · PR #12 `ed5f63b` | `done` |
 
 ### Wave 1.5 — 体验收尾（建议在 Wave 2 前做带 ★ 的）
 
@@ -164,18 +143,17 @@
 
 历史尝试（不要当现行任务）：PR #7 手+嘴、#8 只接手、#9 眼嘴嵌入脸 —— 均 `CLOSED`。
 
-### P0 第一批（包级，已开 PR，尚未合入 `master`）
+### P0 第一批（包级，已合入 `master`）
 
 | Agent | Story | PR | 状态 |
 |-------|--------|-----|------|
-| P0-A | ST-STATE-01 状态机类型 | #15 | `in_progress` · 可合 |
-| P0-B | ST-STATE-02 PixelRenderer 切层 | #16 | `in_progress` · 可合 |
-| P0-C | ST-VOICE-01 可选 VAD | #17 | `in_progress` · 可合 |
-| P0-D | ST-VIZ-01/02 AgentPhase + CLI 解析 | #18 | `in_progress` · 可合 |
+| P0-A | ST-STATE-01 状态机类型 | #15 `57a69ef` | `done` |
+| P0-B | ST-STATE-02 PixelRenderer 切层 | #16 `9dabe5f` | `done` |
+| P0-C | ST-VOICE-01 可选 VAD | #17 `99e8607` | `done` |
+| P0-D | ST-VIZ-01/02 AgentPhase + CLI 解析 | #18 `9afb386` | `done` |
+| 旁路 | PetDex/Codex 包 `petdex/` | #19 `b8a83da` | `done`（非桌宠运行时） |
 
-桌面接线 **未开**：P0-E 状态机+打断、P0-F 流式 ASR、P0-G 角色窗换脸、P0-H hide 烟窗+点击穿透。等 #14 与上表合入后再派。
-
-旁路（不是桌宠 240×336 主路径）：PR #19 `petdex/` 给 PetDex/Codex 导入，运行时不读。
+桌面接线 **未开**：P0-E 状态机+打断、P0-F 流式 ASR、P0-G 角色窗换脸、P0-H hide 烟窗+点击穿透。等 **#14 合入** 后再派（E 与 F 可并行；G 等 E；H 等 G）。
 
 ---
 
@@ -185,7 +163,7 @@
 
 Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P-Gen / 不要做 C 路**。
 
-**你先做（人）：** 关 #11 → 合 #12 → 合 #15/#16/#17/#18（任意顺序）→ 本机点 #14 后丢掉其过期 tracker 再合。#19 与桌宠主路径无关，另定。
+**你先做（人）：** 本机点 #14 → 从该 PR **删掉** `docs/project-tracker.md` → 合入。然后可派 P0-E（接线+打断）与 P0-F（流式 ASR）。不要再派 A～D。
 
 #### 路况
 
@@ -249,11 +227,9 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 
 ### 4.1 建议下一件（无人指定任务时按此取）
 
-1. 关重复草稿 **#11**。合入 **#12**（本板）。
-2. 合入 P0 第一批 **#15 #16 #17 #18**（文件零重叠，任意顺序；仍是 draft，合前可标 ready）。
-3. 本机点一下 **#14**，从该 PR **删掉**过期 `docs/project-tracker.md` 后再合。不要再开第二条路 B。
-4. **不要**现在开 P0-E / G / H。P0-F 等 #17 合入后可与 P0-E 并行。
-5. **#19** `petdex/`：合入与否你拍板；合了也不要让任何人改 `assets/pixel/` 去「对齐」那张 192×208 表。
+1. 本机点一下 **#14**，从该 PR **删掉**过期 `docs/project-tracker.md` 后再合。不要再开第二条路 B。
+2. #14 合入后派 **P0-E**（`character.ts` / `main`）与 **P0-F**（只 `packages/voice`）。不要现在开 P0-G / P0-H。
+3. 已合入的功能分支可删。不要改 `assets/pixel/` 去对齐 `petdex/` 的 192×208 表。
 
 路 B 已有 PR，下面提示词仅备查，不要再开第二条路 B。
 
@@ -326,7 +302,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 **Wave 2 启动条件**
 
 - [x] W15-01 有本机结论（用户口头确认已做完）
-- [ ] W15-02 关闭入口已合入（PR #14 代码完成、待本机点一下；**P0-A～D 不挡**）
+- [ ] W15-02 关闭入口已合入（PR #14 仍开；P0-A～D 已在 master）
 - [x] 像素资产不再频繁整树重写（用户确认已落地；W15-06 deferred）
 
 派工提示词与文件独占：合入后仍以 [agent-split.md §8–§10](./agent-split.md) 为准，**先在本板认领对应 W2-xx**。P0/P1 Story 级可写路径以 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) 为准，**不要改冻结契约**。
@@ -426,6 +402,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | — | 用户指示：关 #11；合入 #12 #15 #16 #17 #18 #19。`master` = `ed5f63b`。仍开：#14 | 用户 + cloud |
 | 2026-08-20 | P0 | 第一批已开 PR：#15 A、#16 B、#17 C、#18 D；旁路 #19 petdex。分支处理写入 §1 | cloud · PR #12 |
 | 2026-08-20 | W15-02 | 路 B 代码审查通过（build CLEAN）；P0-A～D **可以立刻派**，不必等 #14 合入；E/G/H 仍等 B | cloud · PR #12 |
 | 2026-08-20 | — | 景观文档 PR #13 已合入 `046c8d1`；快照 tip 从 `5a17d58` 更新 | cloud · PR #12 |
