@@ -53,3 +53,24 @@ python3 petdex/tools/assemble_spritesheet.py
 ```
 
 只写 `petdex/`。
+
+## Windows：装到 Codex `~/.codex/pets`
+
+`Copy-Item` **不会**创建还不存在的目录。若报错
+`未能找到路径 …\.codex\pets\niko-miao\ 的一部分`，先建文件夹再拷：
+
+```powershell
+# 在仓库根目录执行（先 git checkout cursor/petdex-ref-sheet-854e）
+powershell -ExecutionPolicy Bypass -File petdex\install-to-codex.ps1
+```
+
+或手敲：
+
+```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.codex\pets\niko-miao"
+Copy-Item "petdex\niko-miao\pet.json","petdex\niko-miao\spritesheet.webp" `
+  "$env:USERPROFILE\.codex\pets\niko-miao\"
+dir "$env:USERPROFILE\.codex\pets\niko-miao"
+```
+
+若当前不在仓库根目录，把 `petdex\niko-miao\` 换成该文件夹的完整路径。拷完后重启导入器，选「尼古喵喵」。
