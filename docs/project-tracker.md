@@ -79,7 +79,7 @@
 | 推进板 / Epic | **完成** · PR #12 已合入；重复草稿 #11 已关未合 |
 | P0 第一批 | **完成**：#15 A · #16 B · #17 C · #18 D 已在 `master` |
 | PetDex 旁路 | **完成** · PR #19 `petdex/`（桌宠运行时不读） |
-| Wave 1.5 路 B | **代码完成、待合入** · PR #14（draft）；本机点一下尚未做 |
+| Wave 1.5 路 B | **本机已验、可合** · PR #14（已 rebase `master`，冲突已解）。W15-02/04 过；W15-03 空闲嘴烟用户接受 |
 | Wave 2 / P0 第二批 | **未开**（等 #14 合入后再派 E/F/G/H） |
 | 下一 REQ | `REQ-003` |
 | 下一 ISS | `ISS-08` |
@@ -90,7 +90,7 @@
 
 | PR | 分支 | 内容 | 建议 |
 |----|------|------|------|
-| #14 | `cursor/close-idle-puff-opaque-ptt-5089` | 路 B：× / 停 idle puff / opaque PTT | **本机点一下后再合**。现在 `master` 已有推进板，#14 里那份过期 `docs/project-tracker.md` **必须删掉**，否则冲突 |
+| #14 | `cursor/close-idle-puff-opaque-ptt-5089` | 路 B：× / 停 22s interval / opaque PTT | **可合**。本机：W15-02/04 过；W15-03 仍有空闲嘴边细烟，用户接受。已丢掉过期 tracker 并 merge 了 `master` |
 | — | 已合入功能分支（#12/#15/#16/#17/#18/#19 及 `cursor/desktop-pet-landscape-doc-df18`、`cursor/project-tracker-45ab`） | 残留 | **可删远程分支** |
 
 不要再开第二套 P0-A～D。不要合已关闭的 #11。
@@ -105,11 +105,12 @@
 
 | 字段 | 内容 |
 |------|------|
-| 状态 | `in_progress` |
+| 状态 | `in_progress`（本机已验，待合入） |
 | 来源 | 体验收尾：关闭入口、停 idle puff、透明不 PTT |
 | 负责人 | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14 |
-| 完成标准 | 合入 `master` 且本机点过 × / 22s 不再喷 / 透明不录音 |
-| 阻塞 | 无头云不能代替本机点一下；合入前必须丢掉 PR 里过期的 `docs/project-tracker.md` |
+| 完成标准 | 合入 `master` |
+| 本机验收 | **2026-08-20 用户**：W15-02 × 退出 **过**；W15-04 透明不 PTT **过**；W15-03 仍会慢慢喷，**接受不修** |
+| 说明 | 22s `setInterval` 大喷已删。剩下的是 `SmokeField.tick` 空闲 `idleRate`（默认 intensity 0.2）嘴边细粒子，派工时故意没改 `SmokeField` |
 
 ---
 
@@ -134,9 +135,9 @@
 | ID | 内容 | 优先级 | 状态 | 建议改哪里 | 备注 |
 |----|------|--------|------|------------|------|
 | W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `done` | 不改代码 | **用户口头验收**（2026-08-20）；无书面分项报告 |
-| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | 与 03/04 **同一云端** · PR #14 | 代码已加顶栏 × → `niko.quit()` → `app.quit()`；待本机点一下 + 合入 |
-| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | 同上 · PR #14 | `boot()` 里 `setInterval` 已删；`idlePuffSeconds` 字段保留 |
-| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | 同上 · PR #14 | 左键先 `extract.pixels` 1×1，alpha ≥ 16 才 `startHold`；**不是**点击穿透 |
+| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | PR #14 | **本机过**（用户 2026-08-20）：× 退出整进程 |
+| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | PR #14 | 22s interval **已删**。空闲嘴边细烟仍在，**用户接受**。见 ISS-01 |
+| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | PR #14 | **本机过**（用户 2026-08-20）：透明不 PTT；不是点击穿透 |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
 | W15-06 | 像素脸/手继续 polish | P1 | `deferred` | **只** `assets/pixel/**` | 用户确认新像素资产已落地（`e7e425a` / `assets/pixel/`）。未再要求重画 |
 | W15-07 | 把设定图拷到 `assets/ref/official-sheet.png` | P1 | `cancelled` | — | **不是**像素资产任务。旧派工约定的别名；真源已在 `尼古喵喵角色图/`，产物已在 `assets/pixel/`。已改正文契约 |
@@ -163,14 +164,14 @@
 
 Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P-Gen / 不要做 C 路**。
 
-**你先做（人）：** 本机点 #14 → 从该 PR **删掉** `docs/project-tracker.md` → 合入。然后可派 P0-E（接线+打断）与 P0-F（流式 ASR）。不要再派 A～D。
+**你先做（人）：** 合入 #14（本机已验、冲突已解）。然后可派 P0-E 与 P0-F。不要再派 A～D。不要为 W15-03 去改 `SmokeField`（用户已接受空闲细烟）。
 
 #### 路况
 
 | 路 | ID | 状态 | 谁 | 说明 |
 |----|-----|------|----|------|
 | A | W15-01 | **`done`** | 本地 / 用户 | 用户确认本机验收已做完 |
-| B | W15-02+03+04 | **代码完成 · PR #14** | cloud · `cursor/close-idle-puff-opaque-ptt-5089` | 关闭 × + 去掉角色窗自动 puff + 透明区不 PTT。独占 `character.ts` / `main/index.ts` 直到合入 |
+| B | W15-02+03+04 | **本机已验 · PR #14 可合** | cloud · `cursor/close-idle-puff-opaque-ptt-5089` | 02/04 过；03 空闲细烟用户接受。仍独占 `character.ts` / `main` 直到合入 |
 | C | W15-07 | **`cancelled`** | — | 只是把设定图再拷到 `assets/ref/`。**不是**新像素图。源图已在 `尼古喵喵角色图/`，木偶已在 `assets/pixel/` |
 | D | W15-06 | **`deferred`** | — | 用户确认像素资产已处理好。除非再说「脸还要改」，否则不要重画 |
 
@@ -182,8 +183,8 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 | GitHub | OPEN · **draft** · `MERGEABLE` / `CLEAN` · 无 review / 无 CI |
 | 构建 | `npx pnpm@9.15.0 --filter @niko/desktop build` 通过（独立 worktree） |
 | 未做（正确） | 无 `setIgnoreMouseEvents`；未改 `smoke.ts` / `windows.ts` / 像素资产 |
-| 合入卫生 | PR **整篇新增**一份过期 `docs/project-tracker.md`（从 `5a17d58` 岔出）。**先合 #12 再合 #14 会打该文件**；#14 应丢掉 tracker 或 rebase 后只留认领 hunk |
-| 本机仍缺 | 点 × 退进程、等 22s 不再自动喷、透明处不录音、身体仍可 PTT、托盘退出仍在 |
+| 合入卫生 | 已 merge `origin/master`，丢掉过期 tracker 全文，只留认领/验收日志 |
+| 本机验收 | **2026-08-20 用户**：W15-02 × **过**；W15-04 透明不 PTT **过**；W15-03 仍有空闲嘴烟，**接受**。残留来自 `SmokeField.tick` idleRate，不是 22s `setInterval` |
 
 剩下和 B 可并行的小文档：ISS-04 README 仍写 Live2D 会接管——可并进 B 或单独一条，别碰 `character.ts`。
 
@@ -227,9 +228,9 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 
 ### 4.1 建议下一件（无人指定任务时按此取）
 
-1. 本机点一下 **#14**，从该 PR **删掉**过期 `docs/project-tracker.md` 后再合。不要再开第二条路 B。
-2. #14 合入后派 **P0-E**（`character.ts` / `main`）与 **P0-F**（只 `packages/voice`）。不要现在开 P0-G / P0-H。
-3. 已合入的功能分支可删。不要改 `assets/pixel/` 去对齐 `petdex/` 的 192×208 表。
+1. **合入 #14**（本机已验：02/04 过，03 空闲细烟用户接受；已 merge `master`）。不要再开第二条路 B。
+2. 然后派 **P0-E**（`character.ts` / `main`）与 **P0-F**（只 `packages/voice`）。不要现在开 P0-G / P0-H。
+3. 已合入的功能分支可删。不要改 `assets/pixel/` 去对齐 `petdex/` 的 192×208 表。不要为 W15-03 去改 `SmokeField`。
 
 路 B 已有 PR，下面提示词仅备查，不要再开第二条路 B。
 
@@ -327,8 +328,8 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | ID | 问题 | 严重度 | 关联 | 状态 |
 |----|------|--------|------|------|
-| ISS-01 | 角色窗仍按 `idlePuffSeconds`（默认 22s）自动 `exhale` + burst | P1 | W15-03 | `in_progress`（PR #14 已删 interval） |
-| ISS-02 | 点到透明 canvas 也会进 PTT | P1 | W15-04 | `in_progress`（PR #14 opaque-only） |
+| ISS-01 | 空闲时嘴边 `SmokeField` 仍按 idleRate 慢慢吐粒子（默认 intensity 0.2） | P3 | W15-03 | `deferred`（22s interval 已删；用户 2026-08-20 接受残留细烟） |
+| ISS-02 | 点到透明 canvas 也会进 PTT | P1 | W15-04 | **本机已过**（PR #14 opaque-only；待合入） |
 | ISS-03 | `mouth-smoke.png` 未进入 `sheet.json` 的 mouth slot；渲染只切 open/closed | P2 | W15-05 | `planned` |
 | ISS-04 | README 仍写「有 model3 则 Live2D」；实现已固定像素 | P3 | 文档 | `planned` |
 | ISS-05 | 无 GitHub Issue、无 PR 模板 | P3 | BL-07 | `planned` |
@@ -402,6 +403,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | W15-02 | 本机验收：02/04 **过**；03 空闲嘴边细烟用户**接受**。ISS-01 降为 deferred。#14 已 merge master | 用户口头 + cloud · PR #14 |
 | 2026-08-20 | — | 用户指示：关 #11；合入 #12 #15 #16 #17 #18 #19。`master` = `ed5f63b`。仍开：#14 | 用户 + cloud |
 | 2026-08-20 | P0 | 第一批已开 PR：#15 A、#16 B、#17 C、#18 D；旁路 #19 petdex。分支处理写入 §1 | cloud · PR #12 |
 | 2026-08-20 | W15-02 | 路 B 代码审查通过（build CLEAN）；P0-A～D **可以立刻派**，不必等 #14 合入；E/G/H 仍等 B | cloud · PR #12 |

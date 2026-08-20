@@ -36,6 +36,7 @@ const niko = {
   sendAudio: (buffer: ArrayBuffer, mime: string) =>
     ipcRenderer.invoke('niko:audio-utterance', { buffer, mime }),
   ptt: (down: boolean) => ipcRenderer.send('niko:ptt', down),
+  quit: () => ipcRenderer.send('niko:quit'),
   speakingEnd: () => ipcRenderer.send('niko:speaking-end'),
   drag: (dx: number, dy: number) => ipcRenderer.send('niko:drag', { dx, dy }),
   onPose: (cb: (pose: CharacterPose) => void) => {

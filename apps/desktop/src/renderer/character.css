@@ -13,14 +13,41 @@ body {
 
 #drag {
   -webkit-app-region: drag;
+  position: relative;
   height: 18px;
   font-size: 10px;
   letter-spacing: 0.2em;
   font-weight: 400;
-  opacity: 0.28;
-  color: #4a5560;
+  color: rgba(74, 85, 96, 0.28);
   text-align: center;
   cursor: grab;
+}
+
+#quit {
+  -webkit-app-region: no-drag;
+  position: absolute;
+  right: 1px;
+  top: 0;
+  width: 16px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #4a5560;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 18px;
+  letter-spacing: 0;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+#quit:hover {
+  opacity: 1;
+  background: rgba(74, 85, 96, 0.16);
+  color: #3a4149;
 }
 
 #bubble {

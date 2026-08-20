@@ -198,6 +198,10 @@ function maybeIdle() {
   if (!busy && !speaking) setPose('idle')
 }
 
+function quitApp() {
+  app.quit()
+}
+
 async function handleUtterance(text: string) {
   if (busy) {
     setStatus('等会儿，这口还没吐完')
@@ -261,6 +265,8 @@ function registerIpc() {
     setStatus(down ? '吸——说' : '')
   })
 
+  ipcMain.on('niko:quit', () => quitApp())
+
   ipcMain.on('niko:speaking-end', () => {
     if (busy) return
     speaking = false
@@ -318,7 +324,7 @@ app.whenReady().then(() => {
   registerIpc()
   createTray({
     windows,
-    onQuit: () => app.quit(),
+    onQuit: quitApp,
     onPuff: () => {
       setPose('exhale')
       applySmoke({ burst: true, intensity: Math.min(1, smokeIntensity + 0.2) })
