@@ -54,23 +54,36 @@ python3 petdex/tools/assemble_spritesheet.py
 
 只写 `petdex/`。
 
-## Windows：装到 Codex `~/.codex/pets`
+## Windows：覆盖本机仓库目录
 
-`Copy-Item` **不会**创建还不存在的目录。若报错
-`未能找到路径 …\.codex\pets\niko-miao\ 的一部分`，先建文件夹再拷：
+导入目标是仓库里的包目录，例如：
 
-```powershell
-# 在仓库根目录执行（先 git checkout cursor/petdex-ref-sheet-854e）
-powershell -ExecutionPolicy Bypass -File petdex\install-to-codex.ps1
-```
+`C:\Users\zhouyuhan01\Nico_yanineco\petdex\niko-miao`
 
-或手敲：
+**优先用 git 拉分支**（该目录就是包本身，不必再拷到 `~/.codex\pets`）：
 
 ```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.codex\pets\niko-miao"
-Copy-Item "petdex\niko-miao\pet.json","petdex\niko-miao\spritesheet.webp" `
-  "$env:USERPROFILE\.codex\pets\niko-miao\"
-dir "$env:USERPROFILE\.codex\pets\niko-miao"
+cd C:\Users\zhouyuhan01\Nico_yanineco
+git fetch origin
+git checkout cursor/petdex-ref-sheet-854e
+git pull origin cursor/petdex-ref-sheet-854e
+dir petdex\niko-miao
 ```
 
-若当前不在仓库根目录，把 `petdex\niko-miao\` 换成该文件夹的完整路径。拷完后重启导入器，选「尼古喵喵」。
+应看到 `pet.json` 和 `spritesheet.webp`。然后让导入器选这个文件夹。
+
+若要从别处覆盖进该目录（`Copy-Item` **不会**自动建文件夹）：
+
+```powershell
+$dest = "C:\Users\zhouyuhan01\Nico_yanineco\petdex\niko-miao"
+New-Item -ItemType Directory -Force -Path $dest | Out-Null
+Copy-Item "pet.json","spritesheet.webp" $dest -Force
+dir $dest
+```
+
+或：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File petdex\install-to-codex.ps1 `
+  -Dest "C:\Users\zhouyuhan01\Nico_yanineco\petdex\niko-miao"
+```
