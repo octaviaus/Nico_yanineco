@@ -607,7 +607,16 @@ W3  PROACTIVE（等状态机 + 语音打断，避免叠播）
 
 每条开 **一条新的 Cloud 对话**，基线 `origin/master`，自己建分支，不要推 master，不要复用推进板对话，不要复用路 B 对话。
 
-### 6.1 第一批 · 现在并行（P0-A～D）
+### 6.1 第一批 · 已开 PR（不要再派第二套）
+
+| Agent | PR | 分支 |
+|-------|-----|------|
+| P0-A | #15 | `cursor/pet-phase-state-machine-4e93` |
+| P0-B | #16 | `cursor/pixel-pose-layer-mapping-56d6` |
+| P0-C | #17 | `cursor/optional-vad-8399` |
+| P0-D | #18 | `cursor/agent-phase-cli-parse-359c` |
+
+下面提示词仅备查。
 
 #### P0-A · 状态机类型（ST-STATE-01）
 
