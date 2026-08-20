@@ -131,9 +131,9 @@
 | ID | 内容 | 优先级 | 状态 | 建议改哪里 | 备注 |
 |----|------|--------|------|------------|------|
 | W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `planned` | 不改代码，出报告 | 无头云 VM 不能代替；负责人应是 **本地** Agent 或用户 |
-| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `planned` | `character.html/css/ts`、`preload`、`main/index.ts`、`env.d.ts` | 现在只能托盘「退出」；`window-all-closed` 故意不退出 |
-| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `planned` | `character.ts` | 全屏烟窗已停转；角色窗 `setInterval` 仍在 |
-| W15-04 | 透明像素不要触发按住说话 | P1 | `planned` | `character.ts` | `#stage` canvas 任意左键都会 `startHold` |
+| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `planned` | 与 03/04 **同一云端**，见 §4.0 路 B | 现在只能托盘「退出」；`window-all-closed` 故意不退出 |
+| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `planned` | 同上 `character.ts` | 全屏烟窗已停转；角色窗 `setInterval` 仍在 |
+| W15-04 | 透明像素不要触发按住说话 | P1 | `planned` | 同上 `character.ts` | `#stage` canvas 任意左键都会 `startHold` |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
 | W15-06 | 像素脸/手继续 polish | P1 | `planned` | **只** `assets/pixel/**` | PR #7 #8 #9 已关未合；当前以 `e7e425a` 为准 |
 | W15-07 | 把设定图落到 `assets/ref/official-sheet.png` | P1 | `planned` | `assets/ref/**`（新建） | 契约要求这张图；仓库里目前只有 `尼古喵喵角色图/` |
@@ -144,14 +144,63 @@
 
 ## 4. 后续开发方案
 
+### 4.0 派工图（2026-08-20：下一步 / 云端并行 / 必须本地）
+
+Wave 1 功能已在 `master`。现在做 **Wave 1.5 收尾**，不要开 Wave 2。
+
+**你先做（人）：** 合入本推进板 PR #12，关掉重复草稿 PR #11。合入前，其它 Agent 读不到这块板。
+
+#### 现在立刻：3 路并行（文件不打架）
+
+| 路 | ID | 谁 | 独占路径 | 说明 |
+|----|-----|----|----------|------|
+| A | W15-01 ★ | **本地** | 不改代码 | 本机 `pnpm dev` 验收：启动、聊、TTS 队列、口型、拖、PTT、托盘、烟。出通过/失败表 |
+| B | W15-02+03+04 | **一个**云端 Agent | `character.html/css/ts`、`preload`、`main/index.ts`、`env.d.ts` | 关闭按钮 + 去掉角色窗自动 puff + 透明区不触发 PTT。**不可拆成三个云端**（都抢 `character.ts`） |
+| C | W15-07 | **另一个**云端 Agent | **只** `assets/ref/**` | 从 `尼古喵喵角色图/` 去底拷成 `official-sheet.png`（及 webp）。禁止另画一只猫 |
+
+可选第 4 路（仍可与 A/B/C 同时开）：
+
+| 路 | ID | 谁 | 独占路径 | 说明 |
+|----|-----|----|----------|------|
+| D | W15-06 | 云端（P-Gen） | **只** `assets/pixel/**` | 脸/手 polish。**不要**和 W15-05 同时开。合并后必须本机看图验收 |
+| — | ISS-04 / BL-07 | 云端 | `README.md`、`.github/**` | 文档小修；可并进 C 或单独一条。别和 B 抢 README 以外的 desktop 代码 |
+
+#### 必须本地（云端可以写代码，但不能当验收通过）
+
+| ID | 为什么必须本地 |
+|----|----------------|
+| W15-01 | 无头云 VM 没有桌面窗口、麦克风、托盘、拖拽 |
+| W15-02/03/04 的**点一下验收** | 关闭、误触 PTT、自动吐烟只能在真桌面确认 |
+| W15-06 / W15-07 的**长相验收** | 去底有没有抠掉米白 T、脸还像不像设定图 |
+| W2-01 克隆音色 | 要本机 9880 / GPT-SoVITS，权重不进 git |
+| Cursor 桥 `dispatch_cursor` | 调的是你电脑上的 Cursor CLI |
+| `config.json` / API 密钥 / TTS 权重 | 禁止进 git，只在本机 |
+
+#### 现在不要并行 / 不要开
+
+| ID | 原因 |
+|----|------|
+| W15-05 与 W15-06 | 都动嘴层 / `sheet.json`。先 D 再 W15-05，或同一 P-Gen 顺手做完 |
+| W2-02 与 W2-03 | 都改 `main/index.ts`，**串行** |
+| 整波 Wave 2 | 等 W15-01 有结论、W15-02 已合入（或你书面说先不做关闭按钮） |
+| 两个云端同时改 `character.ts` 或同时改 `assets/pixel/**` | 必冲突 |
+
+#### Wave 2 以后怎么拆（先别派）
+
+| ID | 云端能否写 | 并行？ | 本地还要做什么 |
+|----|------------|--------|----------------|
+| W2-01 Clone | 只能写说明 / `config.example.json` | 可与 W2-04 并行 | **本机**跑 9880 才算完成 |
+| W2-02 Stream | 能写 `packages/core` + `main/index.ts` | **不能**与 W2-03 同时 | 本机听「边生成边出声」 |
+| W2-03 Shell | 能写 `windows.ts` / 烟窗 / `main` | **不能**与 W2-02 同时 | 本机试 hide、点击穿透 |
+| W2-04 SFX | 能加 wav + 小播放逻辑 | 避开 `main/index.ts` 时可与 Clone 并行 | 本机听吸/吐 |
+
 ### 4.1 建议下一件（无人指定任务时按此取）
 
-1. 合入 **REQ-001**（本板）。
-2. **W15-01** 本机验收（本地）。云端不要假装点过 Electron。
-3. **W15-02** 关闭按钮（小改动，先认领再动 `character.ts` / `main`）。
-4. **W15-07** 补 `assets/ref/official-sheet.png`（从 `尼古喵喵角色图/` 去底拷入，不要另画一只猫）。
-5. 用户在意长相再做 **W15-06**；否则进 Wave 2。
-6. Wave 2 按 4.2，**W2-02 与 W2-03 不得并行**（都改 `main/index.ts`）。
+1. 合入 **REQ-001**（本板 PR #12；关 #11）。
+2. **三路并行**：本地 W15-01；云端一条做 W15-02+03+04；云端另一条做 W15-07。
+3. 在意长相再开 W15-06（不要同时开 W15-05）。
+4. W15-05 放在像素嘴层稳定之后。
+5. Wave 2 按 4.2，**W2-02 与 W2-03 不得并行**。
 
 ### 4.2 Wave 2（启动条件满足后再派工）
 
@@ -263,6 +312,7 @@
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | — | 用户要求梳理下一步；写入 §4.0 派工图（3 路并行 + 本地验收） | cloud · PR #12 |
 | 2026-08-19 | ISS-07 | 记下 `assets/ref/` 缺失；设定图仍在 `尼古喵喵角色图/` | cloud · PR #12 |
 | 2026-08-19 | REQ-001 | 推进板开 PR #12；相对链接校验通过 | cloud · `cursor/project-tracker-9e59` |
 | 2026-08-19 | REQ-001 | 初版推进板：Wave1 完成态、W15/W2/backlog、Agent 认领协议 | cloud · `cursor/project-tracker-9e59` |
