@@ -6,8 +6,13 @@ import { loadImage } from './knockout'
 import {
   DEFAULT_PIXEL_SHEET,
   PIXEL_SCALE,
+  faceVariantsOf,
   layerSrcCandidates,
+  nextBlinkDelayMs,
   normalizeSheet,
+  resolveGroupVariant,
+  resolvePoseEyes,
+  resolvePoseMouth,
   type FaceState,
   type PixelLayerDef,
   type PixelSheet,
@@ -32,7 +37,7 @@ export class PixelRenderer implements CharacterRenderer {
   private blinkIdx = -1
   private blinkAcc = 0
   private blinkHold = 0
-  private nextBlink = 2800
+  private nextBlink = nextBlinkDelayMs()
   private readonly onTick = (): void => this.tickBlink()
 
   constructor(
@@ -71,14 +76,9 @@ export class PixelRenderer implements CharacterRenderer {
 
   setPose(pose: CharacterPose): void {
     this.pose = pose
-    const face = this.sheet.poses[pose]
-    if (face?.mouth === 'open') this.mouthOpen = pose === 'talk' ? 0.7 : 0.4
-    else if (pose === 'talk') this.mouthOpen = 0.7
-    else if (pose === 'exhale') this.mouthOpen = 0.4
-    else if (pose === 'inhale') this.mouthOpen = 0.15
-    else this.mouthOpen = 0
-    this.applyMouth()
-    if (this.blinkIdx < 0) this.setEyes(face?.eyes ?? 'open')
+    if (pose === 'idle' || pose === 'inhale') this.mouthOpen = 0
+    if (pose !== 'idle') this.stopBlink()
+    this.applyPoseFace()
   }
 
   setMouthOpen(value: number): void {
@@ -109,15 +109,19 @@ export class PixelRenderer implements CharacterRenderer {
   }
 
   private applyPoseFace() {
-    const face = this.sheet.poses[this.pose]
     this.applyMouth()
-    this.setEyes(face?.eyes ?? 'open')
+    if (this.blinkIdx < 0) this.applyEyes()
+  }
+
+  private applyEyes() {
+    this.setEyes(resolvePoseEyes(this.pose, faceVariantsOf(this.sheet.layers, 'eyes')))
   }
 
   private applyMouth() {
-    const poseMouth = this.sheet.poses[this.pose]?.mouth
-    const open = this.mouthOpen > 0.35 || poseMouth === 'open' || this.pose === 'talk'
-    this.setGroup('mouth', open ? 'open' : 'closed')
+    this.setGroup(
+      'mouth',
+      resolvePoseMouth(this.pose, this.mouthOpen, faceVariantsOf(this.sheet.layers, 'mouth'))
+    )
   }
 
   private setEyes(state: FaceState) {
@@ -128,14 +132,10 @@ export class PixelRenderer implements CharacterRenderer {
   private setGroup(group: 'eyes' | 'mouth', variant: FaceState) {
     const members = this.layers.filter((l) => l.def.group === group)
     if (!members.length) return
-    const resolved: FaceState =
-      members.some((l) => l.def.variant === variant)
-        ? variant
-        : variant === 'half' && members.some((l) => l.def.variant === 'closed')
-          ? 'closed'
-          : variant === 'closed' && members.some((l) => l.def.variant === 'half')
-            ? 'half'
-            : variant
+    const resolved = resolveGroupVariant(
+      members.map((l) => l.def.variant),
+      variant
+    )
     for (const layer of members) {
       if (!layer.def.variant) {
         layer.node.visible = true
@@ -149,8 +149,20 @@ export class PixelRenderer implements CharacterRenderer {
     return this.layers.some((l) => l.def.group === 'eyes' && l.def.variant === variant)
   }
 
+  private stopBlink() {
+    this.blinkIdx = -1
+    this.blinkSeq = []
+    this.blinkAcc = 0
+  }
+
   private tickBlink() {
-    if (this.pose !== 'idle' && this.blinkIdx < 0) return
+    if (this.pose !== 'idle') {
+      if (this.blinkIdx >= 0) {
+        this.stopBlink()
+        this.applyEyes()
+      }
+      return
+    }
     const dt = Ticker.shared.deltaMS
     this.blinkAcc += dt
     if (this.blinkIdx >= 0) {
@@ -159,9 +171,9 @@ export class PixelRenderer implements CharacterRenderer {
         this.blinkAcc = 0
         const next = this.blinkSeq[this.blinkIdx]
         if (!next) {
-          this.blinkIdx = -1
-          this.setEyes(this.sheet.poses.idle?.eyes ?? 'open')
-          this.nextBlink = 2400 + Math.random() * 2800
+          this.stopBlink()
+          this.applyEyes()
+          this.nextBlink = nextBlinkDelayMs()
           return
         }
         this.setEyes(next)

@@ -12,7 +12,9 @@ export type PlaceholderShape =
   | { kind: 'poly'; points: number[] }
 
 export type PixelLayerGroup = 'eyes' | 'mouth'
-export type FaceState = 'open' | 'half' | 'closed'
+export type EyeVariant = 'open' | 'half' | 'closed'
+export type MouthVariant = 'closed' | 'open' | 'smoke'
+export type FaceState = EyeVariant | MouthVariant
 
 export type PixelLayerDef = {
   name: string
@@ -27,8 +29,94 @@ export type PixelLayerDef = {
 }
 
 export type PixelPoseFace = {
-  eyes?: FaceState
-  mouth?: FaceState
+  eyes?: EyeVariant
+  mouth?: MouthVariant
+}
+
+/** agent-split §2 / ST-STATE-02: pose → eye/mouth slots. Blink is idle-only. */
+export const POSE_LAYER_CONTRACT: Record<CharacterPose, PixelPoseFace> = {
+  idle: { eyes: 'half', mouth: 'closed' },
+  talk: { eyes: 'half', mouth: 'open' },
+  inhale: { eyes: 'closed', mouth: 'closed' },
+  exhale: { eyes: 'half', mouth: 'smoke' }
+}
+
+/** Blink interval on idle, inclusive range in milliseconds. */
+export const BLINK_MIN_MS = 4000
+export const BLINK_MAX_MS = 7000
+export const MOUTH_OPEN_THRESHOLD = 0.35
+
+export function nextBlinkDelayMs(random = Math.random): number {
+  return BLINK_MIN_MS + random() * (BLINK_MAX_MS - BLINK_MIN_MS)
+}
+
+export function parseEyeVariant(v: unknown): EyeVariant | undefined {
+  return v === 'open' || v === 'half' || v === 'closed' ? v : undefined
+}
+
+export function parseMouthVariant(v: unknown): MouthVariant | undefined {
+  return v === 'closed' || v === 'open' || v === 'smoke' ? v : undefined
+}
+
+export function faceVariantsOf(layers: PixelLayerDef[], group: PixelLayerGroup): FaceState[] {
+  const out: FaceState[] = []
+  for (const layer of layers) {
+    if (layer.group === group && layer.variant && !out.includes(layer.variant)) out.push(layer.variant)
+  }
+  return out
+}
+
+/** idle: open/half (prefer half = 半眯). */
+export function resolveIdleEyes(available: Iterable<FaceState>): EyeVariant {
+  const set = new Set(available)
+  if (set.has('half')) return 'half'
+  if (set.has('open')) return 'open'
+  return POSE_LAYER_CONTRACT.idle.eyes ?? 'half'
+}
+
+/** inhale: squintier than idle (half if idle is open, else closed). */
+export function resolveInhaleEyes(available: Iterable<FaceState>): EyeVariant {
+  const set = new Set(available)
+  const idle = resolveIdleEyes(available)
+  if (idle === 'open' && set.has('half')) return 'half'
+  if (set.has('closed')) return 'closed'
+  if (set.has('half')) return 'half'
+  return POSE_LAYER_CONTRACT.inhale.eyes ?? 'closed'
+}
+
+export function resolvePoseEyes(pose: CharacterPose, available: Iterable<FaceState>): EyeVariant {
+  return pose === 'inhale' ? resolveInhaleEyes(available) : resolveIdleEyes(available)
+}
+
+/**
+ * idle/inhale: mouth closed.
+ * talk: setMouthOpen threshold (not the pose table).
+ * exhale: smoke if that slot exists on the sheet, otherwise open.
+ */
+export function resolvePoseMouth(
+  pose: CharacterPose,
+  mouthOpen: number,
+  available: Iterable<FaceState>
+): MouthVariant {
+  if (pose === 'idle' || pose === 'inhale') return 'closed'
+  if (pose === 'talk') return mouthOpen > MOUTH_OPEN_THRESHOLD ? 'open' : 'closed'
+  const set = new Set(available)
+  return set.has('smoke') ? 'smoke' : 'open'
+}
+
+/** Pick an existing variant; smoke falls back to open (do not invent sheet field names). */
+export function resolveGroupVariant(
+  available: Iterable<FaceState | undefined>,
+  wanted: FaceState
+): FaceState {
+  const have = new Set<FaceState>()
+  for (const v of available) if (v) have.add(v)
+  if (have.has(wanted)) return wanted
+  if (wanted === 'smoke' && have.has('open')) return 'open'
+  if (wanted === 'half' && have.has('closed')) return 'closed'
+  if (wanted === 'closed' && have.has('half')) return 'half'
+  if (wanted === 'open' && have.has('closed')) return 'closed'
+  return wanted
 }
 
 export type PixelSheet = {
@@ -50,6 +138,7 @@ const TAIL = 0x5a5850
 const EYE = 0x3a2a20
 const MOUTH_CLOSED = 0xc45c6a
 const MOUTH_OPEN = 0x7a2838
+const MOUTH_SMOKE = 0x9a9488
 
 function layer(
   name: string,
@@ -118,33 +207,35 @@ export const DEFAULT_PIXEL_SHEET: PixelSheet = {
     layer('mouth-open', 10, MOUTH_OPEN, [{ kind: 'ellipse', x: 40, y: 35, rx: 4.5, ry: 3.5 }], {
       group: 'mouth',
       variant: 'open'
+    }),
+    layer('mouth-smoke', 10, MOUTH_SMOKE, [
+      { kind: 'ellipse', x: 40, y: 35, rx: 3.5, ry: 2.2 },
+      { kind: 'ellipse', x: 48, y: 32, rx: 4, ry: 2.5 }
+    ], {
+      group: 'mouth',
+      variant: 'smoke'
     })
   ],
-  poses: {
-    idle: { eyes: 'open', mouth: 'closed' },
-    talk: { eyes: 'open', mouth: 'open' },
-    inhale: { eyes: 'closed', mouth: 'closed' },
-    exhale: { eyes: 'half', mouth: 'open' }
-  }
+  poses: { ...POSE_LAYER_CONTRACT }
 }
 
 export function parseFaceState(v: unknown): FaceState | undefined {
-  return v === 'open' || v === 'half' || v === 'closed' ? v : undefined
+  return parseEyeVariant(v) ?? parseMouthVariant(v)
 }
 
 export function inferFaceSlot(name: string): Pick<PixelLayerDef, 'group' | 'variant'> {
   const n = name.toLowerCase()
   if (/(eye|blink)/.test(n)) {
-    let variant: FaceState = 'open'
+    let variant: EyeVariant = 'open'
     if (/(close|shut)/.test(n)) variant = 'closed'
     else if (/half/.test(n)) variant = 'half'
     return { group: 'eyes', variant }
   }
   if (/(mouth|lip)/.test(n)) {
-    return {
-      group: 'mouth',
-      variant: /(open|talk|smoke)/.test(n) ? 'open' : 'closed'
-    }
+    let variant: MouthVariant = 'closed'
+    if (/smoke/.test(n)) variant = 'smoke'
+    else if (/(open|talk)/.test(n)) variant = 'open'
+    return { group: 'mouth', variant }
   }
   return {}
 }
@@ -184,7 +275,13 @@ function parseLayer(raw: unknown, index: number, fallback: PixelLayerDef | undef
   const group =
     parseGroup(o.group) ?? parseGroup(o.slot) ?? face.group ?? fallback?.group
   const variant =
-    parseFaceState(o.variant) ?? parseFaceState(o.state) ?? face.variant ?? fallback?.variant
+    (group === 'eyes'
+      ? parseEyeVariant(o.variant) ?? parseEyeVariant(o.state)
+      : group === 'mouth'
+        ? parseMouthVariant(o.variant) ?? parseMouthVariant(o.state)
+        : parseFaceState(o.variant) ?? parseFaceState(o.state)) ??
+    face.variant ??
+    fallback?.variant
   return {
     name,
     src,
@@ -215,8 +312,8 @@ function parsePoses(raw: unknown): PixelSheet['poses'] {
     const p = asRecord(o[key])
     if (!p) continue
     poses[key] = {
-      eyes: parseFaceState(p.eyes) ?? poses[key]?.eyes,
-      mouth: parseFaceState(p.mouth) ?? poses[key]?.mouth
+      eyes: parseEyeVariant(p.eyes) ?? poses[key]?.eyes,
+      mouth: parseMouthVariant(p.mouth) ?? poses[key]?.mouth
     }
   }
   return poses
@@ -231,6 +328,46 @@ function parseLayerList(raw: unknown): unknown[] | null {
     const rec = asRecord(value)
     return rec ? { name, ...rec } : { name }
   })
+}
+
+function parseStringList(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null
+  const out: string[] = []
+  for (const item of raw) {
+    if (typeof item === 'string' && item.trim()) out.push(item.trim())
+  }
+  return out.length ? out : null
+}
+
+/** Read sheet.json `eyes` / `mouths` / `slots.*.states` without renaming fields. */
+function requestedFaceVariants(
+  rawSheet: Record<string, unknown>,
+  group: PixelLayerGroup
+): FaceState[] | null {
+  const topKey = group === 'eyes' ? 'eyes' : 'mouths'
+  const fromTop = parseStringList(rawSheet[topKey])
+  const slots = asRecord(rawSheet.slots)
+  const slot = asRecord(slots?.[group])
+  const fromSlot = parseStringList(slot?.states ?? slot?.variants)
+  if (!fromTop && !fromSlot) return null
+  const parse = group === 'eyes' ? parseEyeVariant : parseMouthVariant
+  const out: FaceState[] = []
+  for (const item of [...(fromTop ?? []), ...(fromSlot ?? [])]) {
+    const v = parse(item)
+    if (v && !out.includes(v)) out.push(v)
+  }
+  return out
+}
+
+function keepDefaultFaceLayer(
+  keep: PixelLayerDef,
+  listedHasGroup: boolean,
+  requested: FaceState[] | null
+): boolean {
+  if (!keep.group || !keep.variant) return false
+  if (requested) return requested.includes(keep.variant)
+  if (!listedHasGroup) return true
+  return keep.variant !== 'smoke'
 }
 
 /** Merge optional assets/pixel/sheet.json onto the default puppet contract. */
@@ -268,6 +405,8 @@ export function normalizeSheet(raw: unknown): PixelSheet {
   const listed = parseLayerList(o.layers ?? o.parts ?? o.sprites)
   if (!listed?.length) return sheet
 
+  const requestedEyes = requestedFaceVariants(o, 'eyes')
+  const requestedMouths = requestedFaceVariants(o, 'mouth')
   const byName = new Map(sheet.layers.map((l) => [l.name, l]))
   const next: PixelLayerDef[] = []
   const seen = new Set<string>()
@@ -281,8 +420,15 @@ export function normalizeSheet(raw: unknown): PixelSheet {
     next.push(parsed)
     seen.add(parsed.name)
   })
+  const listedHasEyes = next.some((l) => l.group === 'eyes')
+  const listedHasMouth = next.some((l) => l.group === 'mouth')
   for (const keep of sheet.layers) {
-    if (!seen.has(keep.name) && keep.group) next.push(keep)
+    if (seen.has(keep.name) || !keep.group) continue
+    const requested = keep.group === 'eyes' ? requestedEyes : requestedMouths
+    const listedHas = keep.group === 'eyes' ? listedHasEyes : listedHasMouth
+    if (!keepDefaultFaceLayer(keep, listedHas, requested)) continue
+    next.push(keep)
+    seen.add(keep.name)
   }
   sheet.layers = next
   return sheet
