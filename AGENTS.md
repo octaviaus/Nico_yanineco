@@ -6,6 +6,7 @@
 
 1. [docs/project-tracker.md](docs/project-tracker.md) — 进度、进行中需求、后续方案（**本地和云端都要读、都要改**）
 2. [docs/agent-split.md](docs/agent-split.md) — 并行派工时的文件独占与提示词
+3. 做 P0/P1 新功能前再读 [docs/pm-epics-p0-p1.md](docs/pm-epics-p0-p1.md)（Epic/Story）。**不要改** `agent-split.md` 冻结契约（层名、240×336、`sheet.json` 字段名）。
 
 ## 所有 Agent（本地 + 云端）
 

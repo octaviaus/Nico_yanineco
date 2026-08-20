@@ -77,7 +77,7 @@
 | TTS 默认 | Edge `zh-CN-XiaoyiNeural`，`rate: 0.85` |
 | Wave 1 | **完成**（#2 #3 #4 #5 #6 + 文档 #10） |
 | Wave 2 | **未开**（启动条件见 §4） |
-| 下一 REQ | `REQ-002` |
+| 下一 REQ | `REQ-003` |
 | 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
 | 下一 W15 | `W15-08` |
@@ -87,7 +87,9 @@
 | 工作 | 分支 / PR | 说明 |
 |------|-----------|------|
 | 本推进板 | `cursor/project-tracker-9e59` · PR #12 | **认领中** · `REQ-001` |
-| 较早的推进板草稿 | PR #11 `cursor/project-tracker-45ab` | 同主题初稿；本文件为后续真源。合入后可关 #11 |
+| 生态调研 | PR #13 `cursor/desktop-pet-landscape-doc-df18` | `docs/desktop-pet-landscape.md`（尚未合入 master） |
+| 路 B UX | PR #14 `cursor/close-idle-puff-opaque-ptt-5089` | W15-02/03/04 |
+| P0/P1 Epic 拆解 | 本分支 `docs/pm-epics-p0-p1.md` · `REQ-002` | 景观 §6 → Story；不改 agent-split 契约 |
 
 ---
 
@@ -107,6 +109,16 @@
 | 验证 | 文档链接指向的仓库文件存在；不改运行时代码 |
 
 完成合入后：本卡片改为 `done`，从本节删除详细表，只在 §3 Wave 表留一行。
+
+### REQ-002 · P0/P1 Epic / Story 拆解
+
+| 字段 | 内容 |
+|------|------|
+| 状态 | `in_progress` |
+| 来源 | 用户：读景观 §6，基于 P0/P1 生成 Epic 与 Story |
+| 负责人 | cloud · `cursor/project-tracker-9e59` · PR #12 |
+| 文档 | [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) |
+| 完成标准 | 每个 Story 有 R01–R19 引用、Wave/依赖、agent-split 可写路径；**未改**冻结契约 |
 
 ---
 
@@ -131,9 +143,9 @@
 | ID | 内容 | 优先级 | 状态 | 建议改哪里 | 备注 |
 |----|------|--------|------|------------|------|
 | W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `done` | 不改代码 | **用户口头验收**（2026-08-20）；无书面分项报告 |
-| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `planned` | 与 03/04 **同一云端**，见 §4.0 路 B | 现在只能托盘「退出」；`window-all-closed` 故意不退出 |
-| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `planned` | 同上 `character.ts` | 全屏烟窗已停转；角色窗 `setInterval` 仍在 |
-| W15-04 | 透明像素不要触发按住说话 | P1 | `planned` | 同上 `character.ts` | `#stage` canvas 任意左键都会 `startHold` |
+| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | 与 03/04 **同一云端** · PR #14 | 现在只能托盘「退出」；`window-all-closed` 故意不退出 |
+| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | 同上 · PR #14 | 全屏烟窗已停转；角色窗 `setInterval` 仍在 |
+| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | 同上 · PR #14 | `#stage` canvas 任意左键都会 `startHold` |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
 | W15-06 | 像素脸/手继续 polish | P1 | `deferred` | **只** `assets/pixel/**` | 用户确认新像素资产已落地（`e7e425a` / `assets/pixel/`）。未再要求重画 |
 | W15-07 | 把设定图拷到 `assets/ref/official-sheet.png` | P1 | `cancelled` | — | **不是**像素资产任务。旧派工约定的别名；真源已在 `尼古喵喵角色图/`，产物已在 `assets/pixel/`。已改正文契约 |
@@ -257,7 +269,7 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 - 做完即停
 ```
 3. 不要开 C、不要重做像素资产。W15-05 仅在你想让吐烟切 `mouth-smoke` 层时再做。
-4. Wave 2 仍等 W15-02 合入（或你说先不做关闭按钮）。**W2-02 与 W2-03 不得并行**。
+4. Wave 2 仍等 W15-02 合入（或你说先不做关闭按钮）。**W2-02 与 W2-03 不得并行**。P0/P1 细拆见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md)。
 
 ### 4.2 Wave 2（启动条件满足后再派工）
 
@@ -274,7 +286,7 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 - [ ] W15-02 关闭入口已合入（或用户书面说先不做）
 - [x] 像素资产不再频繁整树重写（用户确认已落地；W15-06 deferred）
 
-派工提示词与文件独占：合入后仍以 [agent-split.md §8–§10](./agent-split.md) 为准，**先在本板认领对应 W2-xx**。
+派工提示词与文件独占：合入后仍以 [agent-split.md §8–§10](./agent-split.md) 为准，**先在本板认领对应 W2-xx**。P0/P1 Story 级可写路径以 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) 为准，**不要改冻结契约**。
 
 ### 4.3 长期 backlog（未排期）
 
@@ -335,6 +347,8 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 | 文档 | 改的频率 | 用途 |
 |------|----------|------|
 | **本文件** | 每个功能 PR | 进度、认领、路线图 |
+| [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) | P0/P1 立项时 | Epic/Story、参考仓库、可写路径 |
+| [desktop-pet-landscape.md](./desktop-pet-landscape.md) | 竞品调研 | Catalog R01–R19、§6 PM 清单（PR #13） |
 | [AGENTS.md](../AGENTS.md) | 很少 | Agent 入口；指向本板 |
 | [agent-split.md](./agent-split.md) | 契约变了才改 | 文件独占、云端提示词 |
 | [visual-optimization-brief.md](./visual-optimization-brief.md) | 视觉策略变了才改 | 设定图真源 |
@@ -368,6 +382,8 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | REQ-002 | 按景观 §6 写出 P0/P1 Epic+Story：`docs/pm-epics-p0-p1.md`（未改 agent-split 契约） | cloud · PR #12 |
+| 2026-08-20 | W15-02 | 路 B 已有 PR #14；推进板标 in_progress | cloud · PR #12 |
 | 2026-08-20 | W15-01 | 用户确认 A 路本机验收已做完 | 用户口头 |
 | 2026-08-20 | W15-07 | **取消 C 路**：不是像素任务；设定图已在 `尼古喵喵角色图/`，木偶已在 `assets/pixel/`。契约不再要求 `assets/ref/` | cloud · PR #12 |
 | 2026-08-20 | W15-06 | 像素 polish 延后：用户确认新像素资产已处理 | 用户口头 |
