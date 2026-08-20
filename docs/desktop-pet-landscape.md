@@ -25,6 +25,7 @@
 
 | 日期 | 执行者 | 摘要 |
 |------|--------|------|
+| 2026-08-20 | Cloud Agent | 增补 §1.5：对照仓库实现与竞品，写当前优劣势（SWOT 输入） |
 | 2026-08-20 | Cloud Agent（首轮） | 初版：覆盖 15+ GitHub 项目；归纳 5 条行业路线；输出 P0–P3 优先级与 PM 拆解表 |
 
 ---
@@ -68,6 +69,58 @@
 - **人设绑定独立烟粒子窗**（角色层不画烟，全屏粒子吐烟）
 - **颓系猫耳少女 IP + Cursor 编码桥**（非泛用插件平台）
 - **AI 生成分层像素资产管线**（P-Gen：模型出图 → 切层 → `sheet.json`），而非 Shimeji 精灵集或 Live2D 商城模型
+
+### 1.5 当前优劣势（对照仓库 + 竞品）
+
+> 评估日期：2026-08-20。证据来自 `apps/desktop`、`packages/{core,voice,agent}`、`assets/pixel`、以及本文 §3 Catalog。  
+> **给 PM**：优势尽量强化，不要用通用桌宠功能稀释人设；劣势按 §6 P0/P1 排期，不要一次全开。
+
+#### 优势（Strengths）
+
+| ID | 优势 | 证据 | 为何重要 |
+|----|------|------|----------|
+| S1 | **人设即产品** | `docs/persona.md`、`packages/core/src/persona.ts`：短句、懒、抽烟当标点；明确禁止女仆/元气/鸡汤 | 多数开源桌宠是「通用可爱皮」；尼古喵喵有可识别 IP 与语气契约，聊天质量上限更高 |
+| S2 | **烟是独立视觉系统** | `windows.ts` 角色窗 + 全屏 smoke 窗；身体层禁止画烟；`set_smoke` 工具可调浓度/burst/散烟 | 竞品几乎没有「人设绑定粒子特效」。这是一眼能认出的差异，不要并进角色 PNG |
+| S3 | **编码任务已接到 Cursor** | `packages/agent`：`dispatch_cursor` / `open_in_cursor`；确认框后再跑 CLI | 与 Clyde/aemeath 同赛道，但别人多是「镜像 Claude 状态」，你已经能**把活丢出去**。这是功能护城河，缺的是可视化（见 W2） |
+| S4 | **包结构清晰，可并行派工** | monorepo：`apps/desktop`、`packages/core`、`voice`、`agent`；`docs/agent-split.md` 冻结层名与可写路径 | 比多数单仓 Electron 玩具更可维护；Cloud Agent 拆分已验证 |
+| S5 | **像素分层契约已冻结** | 240×336、`sheet.json` 层序、Pixi `NEAREST`；`PixelRenderer` 已是默认渲染路径 | 不跟 Live2D 商城卷模型；后续换皮、口型、眨眼都有稳定接口 |
+| S6 | **模型与语音可本地可云** | LLM：OpenAI 兼容（DeepSeek / Ollama）；TTS：Edge 默认女声 0.85 语速；STT：openai / local / webspeech | 国内可用、无密钥也能待在桌面上抽烟；人设语速与 Edge 慢女声对齐 |
+| S7 | **对话链路已有「能打断、按句播」雏形** | `splitSentences`、`speakGen` 打断、临时文件优先于整段 base64、高危工具 `confirm` | 比「整段合成完才开口」的桌宠更接近可用；Wave 2 流式是增量不是重写 |
+| S8 | **工具边界清楚** | 闲聊不揽活；大事交 Cursor；小事（开路径、剪贴板、烟）自己干；最多 5 轮 tool loop | 减少「桌宠自己编补丁」的幻觉；符合人设 |
+
+#### 劣势（Weaknesses）
+
+| ID | 劣势 | 证据 | 影响 | 对应 Epic |
+|----|------|------|------|-----------|
+| W1 | **像素成品层缺失** | `assets/pixel/` 仅有 `sheet.json`、脚本与 gen-log，**没有** `layers/*.png` / `preview.png` | 窗口里仍是占位或未完成形象，视觉承诺未兑现 | P-Gen（agent-split §3） |
+| W2 | **角色窗不穿透** | smoke 窗已 `setIgnoreMouseEvents(true)`；character 窗没有 hitbox 穿透 | 挡点击，桌宠「贴桌面」体验弱于 WindowPet / duzexu | `EPIC-W2-SHELL-PASSTHROUGH` |
+| W3 | **语音是按键对讲，不是对话** | STT 靠按住角色 / `Ctrl+Shift+M` 松手再识别；无 VAD、无流式 ASR | 延迟与打断体验落后 deskpet / petto / AI-Desktop-Pet | `EPIC-W2-VOICE-PIPELINE` |
+| W4 | **LLM 非流式** | `NikoChat.talk` 等整段 `chatCompletion` 返回再 `speak` | 长回复要等很久才开口；与人设短句部分对冲 | W2-Stream |
+| W5 | **Cursor 桥是「扔出去等结果」** | `runCursorAgent` spawn CLI，超时 8 分钟；`busy=true` 期间拒收新话；无 tool/phase 动画 | 编码中桌宠像死机；Clyde/aemeath 的状态镜像你没有 | `EPIC-W2-AGENT-VISUAL` |
+| W6 | **无长期记忆** | `HISTORY_LIMIT = 24`，进程内数组，重启即忘 | 陪聊深度弱于 ChromaDB / Hermes 记忆类项目 | `EPIC-W3-MEMORY` |
+| W7 | **双全屏窗 + Electron** | character `backgroundThrottling: false`；smoke 全屏 Pixi | 空闲耗电/GPU 高于 Tauri 竞品（Clyde ~5MB 叙事） | `EPIC-W2-SHELL`、R-Smoke |
+| W8 | **几乎没有设置面** | 配置靠 `config.json` + 环境变量；托盘只有吐烟/散烟/显隐/退出 | 非开发者上手成本高；竞品多有 Control Center | 可新建 `EPIC-W2-SETTINGS`（尚未入 §6） |
+| W9 | **角色只会待在角落** | 仅拖拽改窗位置；无行走、无多屏、无边缘反应 | 「桌宠」偏静态助手；IsmetBuddy / Shimeji 更像活物 | 非 P0；见 §5 B1 |
+| W10 | **状态机是隐式 flag** | `busy` / `speaking` / `pose` 分散在 `main/index.ts` | 口型、烟、语音、Agent 容易打架 | `EPIC-W1-STATE-MACHINE` |
+| W11 | **安全面偏松** | `webSecurity: false`、`sandbox: false`；审计只靠 confirm 对话框 | Agent 能力变强后风险上升 | `EPIC-W2-AGENT-AUDIT` |
+| W12 | **单 LLM、无 fallback** | `config.example.json` 一个 `baseURL`；失败即「聊崩了」 | API 抖动时整桌宠哑火 | `EPIC-W2-LLM-FALLBACK` |
+| W13 | **不会主动找你** | 无空闲问候、无窗口标题感知、无截屏视觉 | 陪伴感弱；petto / Vision LLM 项目更「活」 | `EPIC-W3-PROACTIVE` |
+| W14 | **Live2D 资产与主路径并存** | `assets/live2d*` 仍在；`createCharacterRenderer` 已强制 pixel | 仓库噪音、Agent 误改风险；主路径需在文档里持续强调 | 不派功能 Epic；文档/清理策略 |
+
+#### 机会与威胁（给规划用，非立刻拆 Story）
+
+| 类型 | 内容 |
+|------|------|
+| 机会 | 编码 Agent 桌宠赛道刚起（Clyde / aemeath / OpenPets MCP）；尼古喵喵已有「真派活」而不仅是状态灯，补上可视化即可形成独特组合 |
+| 机会 | 像素分层 + AI 出图管线，比手绘 Shimeji / 买 Live2D 更适合「一个角色 IP 迭代」 |
+| 威胁 | OpenPets 把 MCP 宠物做成平台，可能吸走「桌面伴侣 + 编程助手」心智 |
+| 威胁 | 视觉层未完成前，产品看起来像半成品；竞品有 Release 安装包，本项目仍偏源码启动 |
+| 威胁 | Electron 双窗若空闲耗电明显，用户会卸掉——体验问题会压过人格优势 |
+
+#### 一句话判断
+
+**产品灵魂（人设 + 烟 + Cursor）已经成型，桌宠外壳（像素成品、穿透、语音自然度、Agent 过程可视化）明显落后于同类开源项目。**  
+下一波投入应优先把 S1–S3 做满，而不是补齐 Shimeji / 多宠 / 插件平台。
 
 ---
 
@@ -540,7 +593,7 @@ flowchart LR
 
 ---
 
-**文档版本**: 1.0  
+**文档版本**: 1.1  
 **last_reviewed**: 2026-08-20  
 **维护者**: 竞品调研 Agent（PR 更新）  
 **读者**: PM Agent、规划 Agent、Cloud Agent 派工前必读（可选）
