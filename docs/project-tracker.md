@@ -114,7 +114,7 @@
 |------|------|
 | 状态 | `in_progress` |
 | 来源 | 用户路 B：W15-02、W15-03、W15-04 同一 Agent、同一 PR |
-| 负责人 | cloud · `cursor/close-idle-puff-opaque-ptt-5089` |
+| 负责人 | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14 |
 | 覆盖 ID | W15-02、W15-03、W15-04 |
 | 可写 | `character.html/css/ts`、`preload/index.ts`、`env.d.ts`、`main/index.ts`（只加 quit IPC）、本文件认领 |
 | 禁止 | `smoke.ts` / `SmokeField` / Wave 2 / W15-05 / 像素重画 |
@@ -144,7 +144,7 @@
 | ID | 内容 | 优先级 | 状态 | 建议改哪里 | 备注 |
 |----|------|--------|------|------------|------|
 | W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `planned` | 不改代码，出报告 | 无头云 VM 不能代替；负责人应是 **本地** Agent 或用户 |
-| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | `character.html/css/ts`、`preload`、`main/index.ts`、`env.d.ts` | cloud · `cursor/close-idle-puff-opaque-ptt-5089`（与 W15-03/04 同 PR） |
+| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | `character.html/css/ts`、`preload`、`main/index.ts`、`env.d.ts` | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14（与 W15-03/04 同 PR） |
 | W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | `character.ts` | 同上；托盘「吐一口」与对话喷烟保留 |
 | W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | `character.ts` | 同上；热键 / 拖动 / 输入框 /「喷」不受影响 |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
@@ -276,7 +276,7 @@
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
-| 2026-08-20 | W15-02 / W15-03 / W15-04 | 同一 PR 认领：关闭按钮、停 idle puff、透明区不 PTT | cloud · `cursor/close-idle-puff-opaque-ptt-5089` |
+| 2026-08-20 | W15-02 / W15-03 / W15-04 | 同一 PR 认领：关闭按钮、停 idle puff、透明区不 PTT | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14 |
 | 2026-08-19 | ISS-07 | 记下 `assets/ref/` 缺失；设定图仍在 `尼古喵喵角色图/` | cloud · PR #12 |
 | 2026-08-19 | REQ-001 | 推进板开 PR #12；相对链接校验通过 | cloud · `cursor/project-tracker-9e59` |
 | 2026-08-19 | REQ-001 | 初版推进板：Wave1 完成态、W15/W2/backlog、Agent 认领协议 | cloud · `cursor/project-tracker-9e59` |
