@@ -6,16 +6,20 @@
 
 ## 可导入包
 
-把整个文件夹丢给对方项目即可：
+把整个文件夹，或 zip，丢给对方项目即可：
 
 ```text
 petdex/niko-miao/
 ├── pet.json
-└── spritesheet.webp   # 也有 spritesheet.png 备份
+└── spritesheet.webp
+
+petdex/niko-miao.zip          # 根目录就是 pet.json + spritesheet.webp
 ```
 
-- 表尺寸 **1536×1872**（8×9，每格 192×208）
-- 行：`idle` · `running-right` · `running-left` · `waving` · `jumping` · `failed` · `waiting` · `running` · `review`
+- 表尺寸 **1536×2288**（v2，8×11，每格 192×208）
+- `spriteVersionNumber`: **2**
+- 行 0–8：`idle` · `running-right` · `running-left` · `waving` · `jumping` · `failed` · `waiting` · `running` · `review`
+- 行 9–10：`look-directions-a`（八向转身）· `look-directions-b`（视线）
 - 未用格留空（透明）
 
 ```json
@@ -24,11 +28,11 @@ petdex/niko-miao/
   "displayName": "尼古喵喵",
   "description": "A sleepy cat-eared girl in an oversized tee who smokes and watches you code.",
   "spritesheetPath": "spritesheet.webp",
-  "spriteVersionNumber": 1
+  "spriteVersionNumber": 2
 }
 ```
 
-对照图：`qa/contact-sheet.png`。
+对照：`qa/contact-sheet.png`。循环预览：`qa/preview-idle.gif`、`preview-waving.gif`、`preview-jumping.gif`、`preview-look-a.gif`。
 
 ## 设定图（身份锁）
 

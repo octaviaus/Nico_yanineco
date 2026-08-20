@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Assemble a Codex/PetDex 8x9 spritesheet from generated row strips.
+"""Assemble a Codex/PetDex 8x11 v2 spritesheet from generated row strips.
 
 Reads magenta-keyed strips under petdex/ref/_gen/ and writes ONLY:
   petdex/niko-miao/pet.json
   petdex/niko-miao/spritesheet.webp
   petdex/niko-miao/spritesheet.png
+  petdex/niko-miao.zip
   petdex/qa/*
 
 Does not modify apps/, packages/, assets/, scripts/, or 尼古喵喵角色图/.
@@ -14,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -27,10 +29,11 @@ PACK = ROOT / "petdex" / "niko-miao"
 QA = ROOT / "petdex" / "qa"
 
 COLS = 8
-ROWS = 9
+ROWS = 11
 ATLAS_W = COLS * CELL_W  # 1536
-ATLAS_H = ROWS * CELL_H  # 1872
+ATLAS_H = ROWS * CELL_H  # 2288
 MARGIN = 10
+SPRITE_VERSION = 2
 
 # Row index, state name, expected frames, source file, vertical mode.
 ROWS_SPEC: list[tuple[int, str, int, str, str]] = [
@@ -43,6 +46,8 @@ ROWS_SPEC: list[tuple[int, str, int, str, str]] = [
     (6, "waiting", 6, "petdex-row-waiting.png", "feet"),
     (7, "running", 6, "petdex-row-running.png", "feet"),
     (8, "review", 6, "petdex-row-review.png", "feet"),
+    (9, "look-directions-a", 8, "petdex-row-look-a.png", "feet"),
+    (10, "look-directions-b", 8, "petdex-row-look-b.png", "feet"),
 ]
 
 
@@ -223,9 +228,37 @@ def write_pet_json(path: Path) -> None:
         "displayName": "尼古喵喵",
         "description": "A sleepy cat-eared girl in an oversized tee who smokes and watches you code.",
         "spritesheetPath": "spritesheet.webp",
-        "spriteVersionNumber": 1,
+        "spriteVersionNumber": SPRITE_VERSION,
     }
     path.write_text(json.dumps(pet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def write_zip(pack: Path) -> Path:
+    zpath = pack.parent / "niko-miao.zip"
+    with zipfile.ZipFile(zpath, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.write(pack / "pet.json", "pet.json")
+        zf.write(pack / "spritesheet.webp", "spritesheet.webp")
+    return zpath
+
+
+def write_preview_gifs(rows: list[list[Image.Image]], qa: Path) -> None:
+    previews = {
+        "idle": (0, 110),
+        "waving": (3, 140),
+        "jumping": (4, 120),
+        "look-a": (9, 160),
+    }
+    for name, (idx, ms) in previews.items():
+        palettes = [checkerboard(f, cell=8).convert("RGB") for f in rows[idx]]
+        if not palettes:
+            continue
+        palettes[0].save(
+            qa / f"preview-{name}.gif",
+            save_all=True,
+            append_images=palettes[1:],
+            duration=ms,
+            loop=0,
+        )
 
 
 def validate(atlas: Image.Image, rows: list[list[Image.Image]]) -> None:
@@ -267,10 +300,11 @@ def main() -> None:
     webp_path = PACK / "spritesheet.webp"
     atlas.save(png_path, "PNG", optimize=True)
     atlas.save(webp_path, "WEBP", lossless=True, quality=100)
-    write_pet_json(PACK / "pet.json")
-
     draw_guides(atlas).save(QA / "contact-sheet.png", "PNG", optimize=True)
     checkerboard(atlas, cell=16).save(QA / "spritesheet-preview.png", "PNG", optimize=True)
+    write_pet_json(PACK / "pet.json")
+    write_preview_gifs(assembled, QA)
+    zpath = write_zip(PACK)
 
     print(f"wrote {PACK}")
     for p in sorted(PACK.iterdir()):
@@ -278,6 +312,7 @@ def main() -> None:
         if p.suffix.lower() in {".png", ".webp"}:
             extra = str(Image.open(p).size)
         print(f"  {p.name:24s} {p.stat().st_size:8d}  {extra}")
+    print(f"zip {zpath} ({zpath.stat().st_size} bytes)")
     print(f"qa contact {QA / 'contact-sheet.png'}")
 
 
