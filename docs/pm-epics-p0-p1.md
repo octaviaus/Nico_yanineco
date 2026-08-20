@@ -51,7 +51,7 @@ Wave 2 已点名、但 **agent-split 尚未写可写清单** 的代号：`W2-Clo
 
 ```
 已完成：V-Timbre、R-Smoke、P-Puppet、P-Gen、S-Speech（Wave 1）
-W1.5：路 B（W15-02/03/04，PR #14）—— 代码审查通过、占 character.ts + main/index.ts 直到合入
+W1.5：路 B（W15-02/03/04，PR #14）—— **已合入** `2a16e25`
    ↓ 不必等 B 合入
 P0-A ST-STATE-01（C-Core 类型，不碰桌面）**现在派**
 P0-B ST-STATE-02（P-Puppet 层映射，不碰 character.ts）**现在派**
@@ -565,7 +565,7 @@ W3  PROACTIVE（等状态机 + 语音打断，避免叠播）
 
 ## 4. 并行矩阵（Cloud 一次最多开谁）
 
-用户决定四条 P0 **都做**。不能「一个 Epic 一个 Agent 同时改桌面」：路 B（PR #14）已占 `character.ts` / `main/index.ts` / preload / character.html/css，直到合入。2026-08-20 审查：#14 功能 diff 完整、desktop build 通过、GitHub `CLEAN`；合入前丢掉过期 tracker 文件。**P0-A～D 现在就可以派。**
+用户决定四条 P0 **都做**。路 B（PR #14）**已合入**，`character.ts` / `main/index.ts` 已释放。P0-A～D 已在 master。第二批可派 P0-E（占桌面壳）与 P0-F（只 voice）。
 
 ### 第一批（现在就能并行，4 个 Agent）
 
@@ -712,7 +712,7 @@ W3  PROACTIVE（等状态机 + 语音打断，避免叠播）
 做完即停。
 ```
 
-### 6.2 第二批 · 等第一批和路 B（PR #14）合入后再开
+### 6.2 第二批 · 现在可开（路 B 与 P0-A～D 已在 master）
 
 打开前确认：master 已含路 B，以及 P0-A/B/C/D 的 PR（至少 A/B/D；C 可稍后）。基线用最新 origin/master。
 
