@@ -1,0 +1,7 @@
+# Local VAD / TTS weights — never commit
+models/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.bin
