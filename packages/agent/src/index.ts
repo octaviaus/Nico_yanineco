@@ -1,5 +1,22 @@
 import { spawn } from 'node:child_process'
 import type { AppConfig, ToolDef } from '@niko/core'
+import { createCursorProgressParser, extractCursorResultText } from './parseCursorProgress.js'
+import type { AgentPhaseEvent } from './parseCursorProgress.js'
+
+export type { AgentPhase, AgentPhaseVisual } from './agentPhase.js'
+export {
+  AGENT_PHASES,
+  AGENT_PHASE_MAP,
+  PHASE_MIN_DISPLAY_MS,
+  getAgentPhaseVisual,
+  isAgentPhase
+} from './agentPhase.js'
+export type { AgentPhaseEvent, CursorProgressParser } from './parseCursorProgress.js'
+export {
+  parseCursorCliOutput,
+  createCursorProgressParser,
+  extractCursorResultText
+} from './parseCursorProgress.js'
 
 export const AGENT_TOOLS: ToolDef[] = [
   {
@@ -132,11 +149,24 @@ function num(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined
 }
 
+export type RunCursorAgentOptions = {
+  onPhase?: (event: AgentPhaseEvent) => void
+}
+
+function emitPhase(onPhase: RunCursorAgentOptions['onPhase'], event: AgentPhaseEvent) {
+  try {
+    onPhase?.(event)
+  } catch {
+    /* 可视化回调崩了也不能让 Cursor 桥跟着炸 */
+  }
+}
+
 function runCommand(
   command: string,
   args: string[],
   cwd: string,
-  timeoutMs = 1000 * 60 * 8
+  timeoutMs = 1000 * 60 * 8,
+  onChunk?: (stream: 'stdout' | 'stderr', chunk: string) => void
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -152,12 +182,24 @@ function runCommand(
       reject(new Error('Cursor 跑太久，我先撤了'))
     }, timeoutMs)
     child.stdout.on('data', (d) => {
-      stdout += d.toString()
+      const chunk = d.toString()
+      stdout += chunk
       if (stdout.length > 80_000) stdout = stdout.slice(-40_000)
+      try {
+        onChunk?.('stdout', chunk)
+      } catch {
+        /* keep idle */
+      }
     })
     child.stderr.on('data', (d) => {
-      stderr += d.toString()
+      const chunk = d.toString()
+      stderr += chunk
       if (stderr.length > 20_000) stderr = stderr.slice(-10_000)
+      try {
+        onChunk?.('stderr', chunk)
+      } catch {
+        /* keep idle */
+      }
     })
     child.on('error', (err) => {
       clearTimeout(timer)
@@ -170,7 +212,12 @@ function runCommand(
   })
 }
 
-export async function runCursorAgent(cli: string, prompt: string, workspace: string): Promise<string> {
+export async function runCursorAgent(
+  cli: string,
+  prompt: string,
+  workspace: string,
+  options?: RunCursorAgentOptions
+): Promise<string> {
   const attempts: Array<{ cmd: string; args: string[] }> = [
     { cmd: cli, args: ['-p', prompt, '--print'] },
     { cmd: 'agent', args: ['-p', prompt, '--print'] },
@@ -178,21 +225,34 @@ export async function runCursorAgent(cli: string, prompt: string, workspace: str
   ]
   const seen = new Set<string>()
   let lastErr = ''
+  let started = false
   for (const a of attempts) {
     const key = `${a.cmd}|${a.args.join(' ')}`
     if (seen.has(key)) continue
     seen.add(key)
+    const parser = createCursorProgressParser()
+    if (!started) {
+      started = true
+      emitPhase(options?.onPhase, { phase: 'session_start', source: 'process' })
+    }
     try {
-      const r = await runCommand(a.cmd, a.args, workspace)
-      const body = (r.stdout || r.stderr).trim()
+      const r = await runCommand(a.cmd, a.args, workspace, 1000 * 60 * 8, (stream, chunk) => {
+        for (const ev of parser.push(chunk, stream)) emitPhase(options?.onPhase, ev)
+      })
+      for (const ev of parser.finish({ exitCode: r.code })) emitPhase(options?.onPhase, ev)
+      const spoken = extractCursorResultText(r.stdout, r.stderr)
+      const body = spoken || (r.stdout || r.stderr).trim()
       if (r.code === 0) {
         return body ? `Cursor 说：\n${body.slice(0, 6000)}` : 'Cursor 跑完了，没吐字。'
       }
       lastErr = body || `exit ${r.code}`
     } catch (err) {
+      const timedOut = err instanceof Error && err.message.includes('跑太久')
+      for (const ev of parser.finish({ timedOut, exitCode: 1 })) emitPhase(options?.onPhase, ev)
       lastErr = err instanceof Error ? err.message : String(err)
     }
   }
+  emitPhase(options?.onPhase, { phase: 'error', detail: lastErr.slice(0, 120), source: 'process' })
   return `Cursor 没接住：${lastErr}。确认装了 Cursor CLI 并登录过（agent login）。`
 }
 
