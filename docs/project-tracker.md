@@ -96,9 +96,11 @@
 
 ## 2. 进行中需求
 
-无进行中产品需求。路 B（REQ-W15-B）已随 PR #14 合入。
+无进行中产品需求。路 B 已合入。
 
-下一件：派 **P0-E**（ST-STATE-03 + ST-VOICE-02）与 **P0-F**（ST-VOICE-03，只 `packages/voice`）。提示词见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) §6.2。不要为 W15-03 去改 `SmokeField`。
+**现在派（2 个 Cloud Agent，并行）：** P0-E + P0-F。提示词 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) §6.2。
+**先别派：** P0-G（等 E）、P0-H（等 G）、W2-Stream / Clone / SFX。
+不要为 W15-03 去改 `SmokeField`。不要再派 A～D 或路 B。
 
 ---
 
@@ -142,7 +144,16 @@
 | P0-D | ST-VIZ-01/02 AgentPhase + CLI 解析 | #18 `9afb386` | `done` |
 | 旁路 | PetDex/Codex 包 `petdex/` | #19 `b8a83da` | `done`（非桌宠运行时） |
 
-桌面接线 **可派**：P0-E 状态机+打断、P0-F 流式 ASR（与 E 并行、只动 voice）。P0-G 角色窗换脸等 E；P0-H hide 烟窗+点击穿透等 G。
+桌面接线 **可派**：P0-E 状态机+打断、P0-F 流式 ASR（与 E 并行、只动 voice）。P0-G 等 E；P0-H 等 G。
+
+### P0 第二批（桌面接线，尚未开工）
+
+| Agent | Story | 何时 | 独占 | 状态 |
+|-------|--------|------|------|------|
+| P0-E | ST-STATE-03 + ST-VOICE-02 | **现在** | `character.ts`、`main/index.ts` | `planned` |
+| P0-F | ST-VOICE-03 | **现在** ∥ E | `packages/voice/**` | `planned` |
+| P0-G | ST-VIZ-03 | 等 E 合入 | `character.ts`、`main` 转发 | `blocked` |
+| P0-H | Shell hide + 点击穿透 | 等 G 合入 | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `blocked` |
 
 ---
 
@@ -391,6 +402,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | P0 | 第二批提示词对齐当前 master：现在派 E+F；G 等 E；H 等 G。见 pm-epics §6.2 | cloud |
 | 2026-08-20 | W15-02 | **合入 PR #14** `2a16e25`。W15-02/03/04 → `done`。`character.ts`/`main` 释放；可派 P0-E/F | 用户指示合入 |
 | 2026-08-20 | W15-02 | 本机验收：02/04 **过**；03 空闲嘴边细烟用户**接受**。ISS-01 降为 deferred。#14 已 merge master | 用户口头 + cloud · PR #14 |
 | 2026-08-20 | — | 用户指示：关 #11；合入 #12 #15 #16 #17 #18 #19。`master` = `ed5f63b`。仍开：#14 | 用户 + cloud |
