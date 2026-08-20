@@ -70,13 +70,14 @@
 | 项 | 值 |
 |----|-----|
 | 默认分支 | `master` |
-| 当前 tip | `5a17d58` — Merge PR #10（契约对齐 240×336 @ scale=1） |
+| 当前 tip | `046c8d1` — Merge PR #13（桌宠开源生态调研文档） |
 | 像素资产 | `e7e425a` — 240×336 分层 idle（`assets/pixel/`，见 `gen-log.md`） |
 | 视觉主路径 | 像素木偶；`createCharacterRenderer` **固定**走 `PixelRenderer`（Live2D 接管是长期项 BL-02） |
 | 舞台 / 角色窗 | 舞台 `240×336`；窗 `240×432`（`geometry.ts`） |
 | TTS 默认 | Edge `zh-CN-XiaoyiNeural`，`rate: 0.85` |
 | Wave 1 | **完成**（#2 #3 #4 #5 #6 + 文档 #10） |
-| Wave 2 | **未开**（启动条件见 §4） |
+| Wave 1.5 路 B | **代码完成、待合入** · PR #14（draft，CLEAN）；本机点一下尚未做 |
+| Wave 2 | **未开**（启动条件见 §4；P0 第一批不依赖合入 B） |
 | 下一 REQ | `REQ-003` |
 | 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
@@ -87,8 +88,8 @@
 | 工作 | 分支 / PR | 说明 |
 |------|-----------|------|
 | 本推进板 | `cursor/project-tracker-9e59` · PR #12 | **认领中** · `REQ-001` |
-| 生态调研 | PR #13 `cursor/desktop-pet-landscape-doc-df18` | `docs/desktop-pet-landscape.md`（尚未合入 master） |
-| 路 B UX | PR #14 `cursor/close-idle-puff-opaque-ptt-5089` | W15-02/03/04 |
+| 生态调研 | PR #13 | **已合入** `master` @ `046c8d1` · `docs/desktop-pet-landscape.md` |
+| 路 B UX | PR #14 `cursor/close-idle-puff-opaque-ptt-5089` | W15-02/03/04 · 代码审查通过，见 §4.0 |
 | P0/P1 Epic 拆解 | 本分支 `docs/pm-epics-p0-p1.md` · `REQ-002` | 景观 §6 → Story；不改 agent-split 契约 |
 
 ---
@@ -143,9 +144,9 @@
 | ID | 内容 | 优先级 | 状态 | 建议改哪里 | 备注 |
 |----|------|--------|------|------------|------|
 | W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `done` | 不改代码 | **用户口头验收**（2026-08-20）；无书面分项报告 |
-| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | 与 03/04 **同一云端** · PR #14 | 现在只能托盘「退出」；`window-all-closed` 故意不退出 |
-| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | 同上 · PR #14 | 全屏烟窗已停转；角色窗 `setInterval` 仍在 |
-| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | 同上 · PR #14 | `#stage` canvas 任意左键都会 `startHold` |
+| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | 与 03/04 **同一云端** · PR #14 | 代码已加顶栏 × → `niko.quit()` → `app.quit()`；待本机点一下 + 合入 |
+| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | 同上 · PR #14 | `boot()` 里 `setInterval` 已删；`idlePuffSeconds` 字段保留 |
+| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | 同上 · PR #14 | 左键先 `extract.pixels` 1×1，alpha ≥ 16 才 `startHold`；**不是**点击穿透 |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
 | W15-06 | 像素脸/手继续 polish | P1 | `deferred` | **只** `assets/pixel/**` | 用户确认新像素资产已落地（`e7e425a` / `assets/pixel/`）。未再要求重画 |
 | W15-07 | 把设定图拷到 `assets/ref/official-sheet.png` | P1 | `cancelled` | — | **不是**像素资产任务。旧派工约定的别名；真源已在 `尼古喵喵角色图/`，产物已在 `assets/pixel/`。已改正文契约 |
@@ -167,9 +168,20 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 | 路 | ID | 状态 | 谁 | 说明 |
 |----|-----|------|----|------|
 | A | W15-01 | **`done`** | 本地 / 用户 | 用户确认本机验收已做完 |
-| B | W15-02+03+04 | 下一步 | **一个**云端 Agent | 关闭按钮 + 去掉角色窗自动 puff + 透明区不触发 PTT。独占 `character.ts` 一带 |
+| B | W15-02+03+04 | **代码完成 · PR #14** | cloud · `cursor/close-idle-puff-opaque-ptt-5089` | 关闭 × + 去掉角色窗自动 puff + 透明区不 PTT。独占 `character.ts` / `main/index.ts` 直到合入 |
 | C | W15-07 | **`cancelled`** | — | 只是把设定图再拷到 `assets/ref/`。**不是**新像素图。源图已在 `尼古喵喵角色图/`，木偶已在 `assets/pixel/` |
 | D | W15-06 | **`deferred`** | — | 用户确认像素资产已处理好。除非再说「脸还要改」，否则不要重画 |
+
+**路 B 审查（2026-08-20，对照 `origin/master` @ `046c8d1`）**
+
+| 项 | 结论 |
+|----|------|
+| 范围 | 三个 ID 都在 PR #14：`character.html/css/ts`、preload、`env.d.ts`、`main/index.ts` |
+| GitHub | OPEN · **draft** · `MERGEABLE` / `CLEAN` · 无 review / 无 CI |
+| 构建 | `npx pnpm@9.15.0 --filter @niko/desktop build` 通过（独立 worktree） |
+| 未做（正确） | 无 `setIgnoreMouseEvents`；未改 `smoke.ts` / `windows.ts` / 像素资产 |
+| 合入卫生 | PR **整篇新增**一份过期 `docs/project-tracker.md`（从 `5a17d58` 岔出）。**先合 #12 再合 #14 会打该文件**；#14 应丢掉 tracker 或 rebase 后只留认领 hunk |
+| 本机仍缺 | 点 × 退进程、等 22s 不再自动喷、透明处不录音、身体仍可 PTT、托盘退出仍在 |
 
 剩下和 B 可并行的小文档：ISS-04 README 仍写 Live2D 会接管——可并进 B 或单独一条，别碰 `character.ts`。
 
@@ -197,7 +209,7 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 |----|------|
 | W15-05 与 W15-06 | 都动嘴层 / `sheet.json`。两者目前都不开，除非用户再要求 |
 | W2-02 与 W2-03 | 都改 `main/index.ts`，**串行** |
-| 整波 Wave 2 | 等 W15-02 已合入（或你书面说先不做关闭按钮） |
+| 整波 Wave 2 壳（Stream/Shell/SFX 接线） | 等 W15-02 合入。**P0-A～D 不是这波**，现在就能开 |
 | 两个云端同时改 `character.ts` 或同时改 `assets/pixel/**` | 必冲突 |
 
 #### Wave 2 以后怎么拆（先别派）
@@ -211,8 +223,11 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 
 ### 4.1 建议下一件（无人指定任务时按此取）
 
-1. 合入 **REQ-001**（本板 PR #12；关 #11）。
-2. 开 **路 B**：一个云端 Agent 做 W15-02+03+04。复制下面整段提示词到**新的** Cloud/本地对话（不要复用本推进板对话）。
+1. **现在派 P0-A～D**（4 个 Cloud Agent，基线 `origin/master`，提示词见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) §6.1）。不碰 `character.ts` / `main/index.ts`，**不必等**路 B 合入。
+2. 本机点一下验收 PR #14 后合入路 B。合入前去掉 #14 里过期的 `docs/project-tracker.md`，或先合本板 #12 再解冲突只留认领/日志。关重复草稿 #11。
+3. **不要**现在开 P0-E / P0-G / P0-H（抢桌面壳）。P0-F 等 P0-C 合入后可与 P0-E 并行。
+
+路 B 已有 PR，下面提示词仅备查，不要再开第二条路 B。
 
 ### 路 B 提示词（整段复制）
 
@@ -283,7 +298,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 **Wave 2 启动条件**
 
 - [x] W15-01 有本机结论（用户口头确认已做完）
-- [ ] W15-02 关闭入口已合入（或用户书面说先不做）
+- [ ] W15-02 关闭入口已合入（PR #14 代码完成、待本机点一下；**P0-A～D 不挡**）
 - [x] 像素资产不再频繁整树重写（用户确认已落地；W15-06 deferred）
 
 派工提示词与文件独占：合入后仍以 [agent-split.md §8–§10](./agent-split.md) 为准，**先在本板认领对应 W2-xx**。P0/P1 Story 级可写路径以 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) 为准，**不要改冻结契约**。
@@ -308,8 +323,8 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | ID | 问题 | 严重度 | 关联 | 状态 |
 |----|------|--------|------|------|
-| ISS-01 | 角色窗仍按 `idlePuffSeconds`（默认 22s）自动 `exhale` + burst | P1 | W15-03 | `planned` |
-| ISS-02 | 点到透明 canvas 也会进 PTT | P1 | W15-04 | `planned` |
+| ISS-01 | 角色窗仍按 `idlePuffSeconds`（默认 22s）自动 `exhale` + burst | P1 | W15-03 | `in_progress`（PR #14 已删 interval） |
+| ISS-02 | 点到透明 canvas 也会进 PTT | P1 | W15-04 | `in_progress`（PR #14 opaque-only） |
 | ISS-03 | `mouth-smoke.png` 未进入 `sheet.json` 的 mouth slot；渲染只切 open/closed | P2 | W15-05 | `planned` |
 | ISS-04 | README 仍写「有 model3 则 Live2D」；实现已固定像素 | P3 | 文档 | `planned` |
 | ISS-05 | 无 GitHub Issue、无 PR 模板 | P3 | BL-07 | `planned` |
@@ -382,6 +397,9 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-20 | W15-02 | 路 B 代码审查通过（build CLEAN）；P0-A～D **可以立刻派**，不必等 #14 合入；E/G/H 仍等 B | cloud · PR #12 |
+| 2026-08-20 | — | 景观文档 PR #13 已合入 `046c8d1`；快照 tip 从 `5a17d58` 更新 | cloud · PR #12 |
+| 2026-08-20 | P0 | 四条 P0 都做：§6 写入 P0-A～H 提示词；第一批 A–D 可并行 | cloud · PR #12 |
 | 2026-08-20 | REQ-002 | 按景观 §6 写出 P0/P1 Epic+Story：`docs/pm-epics-p0-p1.md`（未改 agent-split 契约） | cloud · PR #12 |
 | 2026-08-20 | W15-02 | 路 B 已有 PR #14；推进板标 in_progress | cloud · PR #12 |
 | 2026-08-20 | W15-01 | 用户确认 A 路本机验收已做完 | 用户口头 |

@@ -1,6 +1,6 @@
 # P0/P1 Epic 与 Story（PM 拆解）
 
-来源：[desktop-pet-landscape.md](./desktop-pet-landscape.md) §6（PR #13；若尚未合入，以该 PR 的 §4/§6 为准）。  
+来源：[desktop-pet-landscape.md](./desktop-pet-landscape.md) §6（已合入 `master` · PR #13 `046c8d1`）。  
 契约：[agent-split.md](./agent-split.md)（**本文件不改冻结项**：层名、240×336、`sheet.json` 字段名）。  
 进度：[project-tracker.md](./project-tracker.md)。
 
@@ -51,12 +51,15 @@ Wave 2 已点名、但 **agent-split 尚未写可写清单** 的代号：`W2-Clo
 
 ```
 已完成：V-Timbre、R-Smoke、P-Puppet、P-Gen、S-Speech（Wave 1）
-W1.5：路 B（W15-02/03/04，PR #14）—— 占 character.ts + main/index.ts
-   ↓ B 合入后
-P0  ST-STATE-01（C-Core 类型，不碰桌面）可与 B 并行
-P0  ST-STATE-02（P-Puppet 层映射）可与 B 并行（不碰 character.ts）
-P0  ST-STATE-03、ST-VOICE-* 接线：等 B
-P0  ST-VIZ-01/02 可与 Stream 前期并行（只动 packages/agent + 映射表）
+W1.5：路 B（W15-02/03/04，PR #14）—— 代码审查通过、占 character.ts + main/index.ts 直到合入
+   ↓ 不必等 B 合入
+P0-A ST-STATE-01（C-Core 类型，不碰桌面）**现在派**
+P0-B ST-STATE-02（P-Puppet 层映射，不碰 character.ts）**现在派**
+P0-C ST-VOICE-01（packages/voice VAD）**现在派**
+P0-D ST-VIZ-01/02（packages/agent）**现在派**
+   ↓ B + A/B/D 合入后
+P0-E ST-STATE-03、ST-VOICE-02 接线：等 B
+P0-F ST-VOICE-03（voice 包）等 P0-C，可与 P0-E 并行
 W2  W2-Stream（W2-02）
     ST-VIZ-03/04（吃 Stream 进度事件，碰 character.ts 时等 Stream）
 W2  EPIC-W2-SHELL（hide/停画）→ EPIC-W2-SHELL-PASSTHROUGH（穿透）  串行
@@ -562,7 +565,7 @@ W3  PROACTIVE（等状态机 + 语音打断，避免叠播）
 
 ## 4. 并行矩阵（Cloud 一次最多开谁）
 
-用户决定四条 P0 **都做**。不能「一个 Epic 一个 Agent 同时改桌面」：路 B（PR #14）已占 `character.ts` / `main/index.ts` / preload / character.html/css。
+用户决定四条 P0 **都做**。不能「一个 Epic 一个 Agent 同时改桌面」：路 B（PR #14）已占 `character.ts` / `main/index.ts` / preload / character.html/css，直到合入。2026-08-20 审查：#14 功能 diff 完整、desktop build 通过、GitHub `CLEAN`；合入前丢掉过期 tracker 文件。**P0-A～D 现在就可以派。**
 
 ### 第一批（现在就能并行，4 个 Agent）
 
