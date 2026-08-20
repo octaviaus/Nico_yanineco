@@ -202,3 +202,23 @@ export async function writeTempAudio(buffer: Buffer, ext: string): Promise<strin
   await writeFile(file, buffer)
   return file
 }
+
+export {
+  createVoiceActivityDetector,
+  isVadReady,
+  readSttVadConfig,
+  requireVoiceActivityDetector,
+  shouldUseLegacyPtt
+} from './vad.js'
+export type {
+  SttVadConfig,
+  VadDisabled,
+  VadEngineName,
+  VadEvent,
+  VadEventType,
+  VadHandle,
+  VadPushResult,
+  VadReasonCode,
+  VadUnavailable,
+  VoiceActivityDetector
+} from './vad.js'

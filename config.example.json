@@ -7,7 +7,12 @@
   "stt": {
     "provider": "webspeech",
     "model": "whisper-1",
-    "apiKeyEnv": "NIKO_LLM_API_KEY"
+    "apiKeyEnv": "NIKO_LLM_API_KEY",
+    "vad": {
+      "enabled": false,
+      "engine": "silero",
+      "modelPath": ""
+    }
   },
   "tts": {
     "provider": "edge",
