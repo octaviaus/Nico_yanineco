@@ -8,7 +8,7 @@ interface NikoApi {
   sendAudio: (buffer: ArrayBuffer, mime: string) => Promise<unknown>
   ptt: (down: boolean) => void
   quit: () => void
-  speakingEnd: () => void
+  speakingEnd: (gen?: number) => void
   drag: (dx: number, dy: number) => void
   onPose: (cb: (pose: import('@niko/core').CharacterPose) => void) => void
   onPhase: (cb: (phase: import('@niko/core').PetPhase) => void) => void
@@ -23,6 +23,7 @@ interface NikoApi {
     buffer?: ArrayBuffer
     interrupt?: boolean
     final?: boolean
+    gen?: number
   }) => void) => void
   onHotkeyPtt: (cb: () => void) => void
   onConfigReloaded: (cb: () => void) => void

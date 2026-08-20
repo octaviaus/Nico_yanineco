@@ -148,7 +148,8 @@ function sendAudioControl(opts: { interrupt?: boolean; final?: boolean }) {
     base64: '',
     mime: 'audio/wav',
     interrupt: opts.interrupt,
-    final: opts.final
+    final: opts.final,
+    gen: speakGen
   })
 }
 
@@ -184,7 +185,8 @@ async function sendClip(
     mime: audio.mime,
     filePath,
     fileUrl,
-    interrupt: opts.interrupt
+    interrupt: opts.interrupt,
+    gen: opts.gen
   })
 }
 
@@ -292,7 +294,8 @@ function registerIpc() {
 
   ipcMain.on('niko:quit', () => quitApp())
 
-  ipcMain.on('niko:speaking-end', () => {
+  ipcMain.on('niko:speaking-end', (_e, gen?: number) => {
+    if (typeof gen === 'number' && gen !== speakGen) return
     cleanupTempAudio()
     if (petPhase.phase === 'Speaking') setPetPhase('Idle')
   })

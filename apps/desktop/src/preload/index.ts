@@ -15,6 +15,7 @@ export type NikoAudioPayload = {
   buffer?: ArrayBuffer
   interrupt?: boolean
   final?: boolean
+  gen?: number
 }
 
 function fileToArrayBuffer(filePath: string): ArrayBuffer | undefined {
@@ -37,7 +38,7 @@ const niko = {
     ipcRenderer.invoke('niko:audio-utterance', { buffer, mime }),
   ptt: (down: boolean) => ipcRenderer.send('niko:ptt', down),
   quit: () => ipcRenderer.send('niko:quit'),
-  speakingEnd: () => ipcRenderer.send('niko:speaking-end'),
+  speakingEnd: (gen?: number) => ipcRenderer.send('niko:speaking-end', gen),
   drag: (dx: number, dy: number) => ipcRenderer.send('niko:drag', { dx, dy }),
   onPose: (cb: (pose: CharacterPose) => void) => {
     ipcRenderer.on('niko:pose', (_e, pose: CharacterPose) => cb(pose))

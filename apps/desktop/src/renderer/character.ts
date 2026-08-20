@@ -34,6 +34,7 @@ type AudioClip = {
   buffer?: ArrayBuffer
   interrupt?: boolean
   final?: boolean
+  gen?: number
 }
 
 let renderer: CharacterRenderer | undefined
@@ -49,6 +50,7 @@ const clipQueue: AudioClip[] = []
 let queuePlaying = false
 let expectMore = false
 let playToken = 0
+let playbackGen = 0
 let currentBlobUrl: string | null = null
 let currentDone: (() => void) | null = null
 const playbackEl = new Audio()
@@ -283,10 +285,12 @@ function clipHasAudio(clip: AudioClip): boolean {
 }
 
 function enqueueClip(payload: AudioClip) {
+  if (typeof payload.gen === 'number') playbackGen = payload.gen
   if (payload.interrupt) {
     clipQueue.length = 0
     stopCurrentClip()
     renderer?.setMouthOpen(0)
+    talking = false
   }
   if (payload.final) expectMore = false
   else if (clipHasAudio(payload) || payload.interrupt) expectMore = true
@@ -296,6 +300,8 @@ function enqueueClip(payload: AudioClip) {
     void playNext()
     return
   }
+  // Main already moved phase on barge-in; do not speakingEnd → Idle.
+  if (payload.interrupt) return
   if (!expectMore && !queuePlaying) finishSpeech()
 }
 
@@ -303,8 +309,8 @@ function stopSpeechPlayback() {
   expectMore = false
   clipQueue.length = 0
   stopCurrentClip()
+  talking = false
   renderer?.setMouthOpen(0)
-  finishSpeech()
 }
 
 function stopCurrentClip() {
@@ -335,7 +341,7 @@ function finishSpeech() {
   if (currentPhase !== 'Speaking') {
     renderer?.setPose(petPhaseToPose(currentPhase))
   }
-  window.niko.speakingEnd()
+  window.niko.speakingEnd(playbackGen)
 }
 
 function revokeBlob() {
