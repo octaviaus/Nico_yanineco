@@ -1,0 +1,63 @@
+{
+  "id": "niko-miao",
+  "displayName": "尼古喵喵",
+  "role": "petdex-ref-only",
+  "note": "Isolated PetDex export. Original app assets and code are not modified.",
+  "sources": {
+    "official_white": "尼古喵喵角色图/50.webp",
+    "official_pixel": "尼古喵喵角色图/nico_miaomiao_transparent.png",
+    "truth": "official-sheet.png is the knockout of 50.webp and is the identity lock. The chibi idle is a PetDex-proportion derivative, not a replacement of the official sheet."
+  },
+  "outputs": {
+    "official_sheet": "petdex/ref/official-sheet.png",
+    "pixel_idle": "petdex/ref/pixel-idle.png",
+    "chibi_idle": "petdex/ref/petdex-canonical-idle.png",
+    "chibi_cell": "petdex/ref/petdex-canonical-idle-192x208.png",
+    "identity_sheet": "petdex/ref/identity-sheet.png"
+  },
+  "petdex_cell": {
+    "width": 192,
+    "height": 208
+  },
+  "sizes": {
+    "official_sheet": [
+      459,
+      1197
+    ],
+    "pixel_idle": [
+      449,
+      1203
+    ],
+    "official_in_cell": [
+      192,
+      208
+    ],
+    "chibi_idle": [
+      553,
+      1398
+    ],
+    "chibi_in_cell": [
+      192,
+      208
+    ]
+  },
+  "identity_lock": {
+    "hair": "messy sage/grey-green pixie #9aa392, uneven bangs",
+    "ears": "cat ears same color as hair, darker tips",
+    "eyes": "lazy half-lidded amber/brown",
+    "mole": "under the character's left eye (viewer's right)",
+    "shirt": "oversized cream/off-white V-neck tee #efe6d8",
+    "pants": "baggy slate trousers #4a5560 pooling at ankles",
+    "shoes": "olive clogs #6b7348",
+    "tail": "thin dark grey, behind the left hip",
+    "pose": "front idle, right hand slightly out, left hand in pocket",
+    "do_not": [
+      "do not substitute a generic cat or wolf",
+      "do not draw a cigarette into the body",
+      "do not antialias pixel derivatives",
+      "do not crop off the feet or ears",
+      "do not modify original-project files"
+    ]
+  },
+  "next": "Generate 9 PetDex animation rows from these refs; do not edit original project files."
+}
