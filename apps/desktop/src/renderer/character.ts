@@ -2,7 +2,7 @@ import { Application, Rectangle, Ticker } from 'pixi.js'
 import { createCharacterRenderer } from './lib/createCharacterRenderer'
 import { SmokeField, makeCloudTexture } from './lib/SmokeField'
 import type { CharacterRenderer } from './lib/CharacterRenderer'
-import type { CharacterPose } from '@niko/core'
+import { petPhaseToPose, type CharacterPose, type PetPhase } from '@niko/core'
 import { CHARACTER_STAGE_HEIGHT, CHARACTER_STAGE_WIDTH } from '../shared/geometry'
 
 const stageEl = document.getElementById('stage')!
@@ -34,6 +34,7 @@ type AudioClip = {
   buffer?: ArrayBuffer
   interrupt?: boolean
   final?: boolean
+  gen?: number
 }
 
 let renderer: CharacterRenderer | undefined
@@ -44,10 +45,12 @@ let chunks: Blob[] = []
 let sttProvider: string = 'webspeech'
 let mouthSmoke: SmokeField | undefined
 let currentPose: CharacterPose = 'idle'
+let currentPhase: PetPhase = 'Idle'
 const clipQueue: AudioClip[] = []
 let queuePlaying = false
 let expectMore = false
 let playToken = 0
+let playbackGen = 0
 let currentBlobUrl: string | null = null
 let currentDone: (() => void) | null = null
 const playbackEl = new Audio()
@@ -74,6 +77,19 @@ async function boot() {
     mouthSmoke.tick(mouth, talking || currentPose === 'exhale' || currentPose === 'talk')
   })
 }
+
+window.niko.onPhase((phase) => {
+  currentPhase = phase
+  const pose = petPhaseToPose(phase)
+  currentPose = pose
+  renderer?.setPose(pose)
+  talking = phase === 'Speaking' || queuePlaying
+  if (phase !== 'Speaking') {
+    stopMouthRms()
+    renderer?.setMouthOpen(0)
+  }
+  renderer?.setSmokeParam(phase === 'Exhale' ? 0.85 : 0.2)
+})
 
 window.niko.onPose((pose) => {
   currentPose = pose
@@ -269,9 +285,12 @@ function clipHasAudio(clip: AudioClip): boolean {
 }
 
 function enqueueClip(payload: AudioClip) {
+  if (typeof payload.gen === 'number') playbackGen = payload.gen
   if (payload.interrupt) {
     clipQueue.length = 0
     stopCurrentClip()
+    renderer?.setMouthOpen(0)
+    talking = false
   }
   if (payload.final) expectMore = false
   else if (clipHasAudio(payload) || payload.interrupt) expectMore = true
@@ -281,6 +300,8 @@ function enqueueClip(payload: AudioClip) {
     void playNext()
     return
   }
+  // Main already moved phase on barge-in; do not speakingEnd → Idle.
+  if (payload.interrupt) return
   if (!expectMore && !queuePlaying) finishSpeech()
 }
 
@@ -288,7 +309,8 @@ function stopSpeechPlayback() {
   expectMore = false
   clipQueue.length = 0
   stopCurrentClip()
-  finishSpeech()
+  talking = false
+  renderer?.setMouthOpen(0)
 }
 
 function stopCurrentClip() {
@@ -316,7 +338,10 @@ function finishSpeech() {
   expectMore = false
   stopMouthRms()
   renderer?.setMouthOpen(0)
-  window.niko.speakingEnd()
+  if (currentPhase !== 'Speaking') {
+    renderer?.setPose(petPhaseToPose(currentPhase))
+  }
+  window.niko.speakingEnd(playbackGen)
 }
 
 function revokeBlob() {
@@ -360,7 +385,7 @@ async function playNext() {
   }
   queuePlaying = true
   talking = true
-  renderer?.setPose('talk')
+  if (currentPhase === 'Speaking') renderer?.setPose('talk')
   const token = playToken
   try {
     await playClipSources(sources, token)

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { readFileSync } from 'node:fs'
-import type { CharacterPose } from '@niko/core'
+import type { CharacterPose, PetPhase } from '@niko/core'
 
 export type RendererConfig = {
   sttProvider: 'openai' | 'local' | 'webspeech'
@@ -15,6 +15,7 @@ export type NikoAudioPayload = {
   buffer?: ArrayBuffer
   interrupt?: boolean
   final?: boolean
+  gen?: number
 }
 
 function fileToArrayBuffer(filePath: string): ArrayBuffer | undefined {
@@ -37,10 +38,13 @@ const niko = {
     ipcRenderer.invoke('niko:audio-utterance', { buffer, mime }),
   ptt: (down: boolean) => ipcRenderer.send('niko:ptt', down),
   quit: () => ipcRenderer.send('niko:quit'),
-  speakingEnd: () => ipcRenderer.send('niko:speaking-end'),
+  speakingEnd: (gen?: number) => ipcRenderer.send('niko:speaking-end', gen),
   drag: (dx: number, dy: number) => ipcRenderer.send('niko:drag', { dx, dy }),
   onPose: (cb: (pose: CharacterPose) => void) => {
     ipcRenderer.on('niko:pose', (_e, pose: CharacterPose) => cb(pose))
+  },
+  onPhase: (cb: (phase: PetPhase) => void) => {
+    ipcRenderer.on('niko:phase', (_e, phase: PetPhase) => cb(phase))
   },
   onSmoke: (cb: (cmd: { intensity: number; burst: boolean; clear: boolean }) => void) => {
     ipcRenderer.on('niko:smoke', (_e, cmd) => cb(cmd))

@@ -4,7 +4,13 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { NikoChat, type AppConfig, type CharacterPose } from '@niko/core'
+import {
+  NikoChat,
+  createPetPhaseMachine,
+  petPhaseToPose,
+  type AppConfig,
+  type PetPhase
+} from '@niko/core'
 import { AGENT_TOOLS, executeTool } from '@niko/agent'
 import { synthesizeSpeech, transcribeAudio } from '@niko/voice'
 import { loadConfig, resolveConfigPath } from './config'
@@ -23,20 +29,32 @@ if (process.platform === 'win32') {
 let windows: OverlayWindows
 let config: AppConfig
 let chat: NikoChat
-let busy = false
-let speaking = false
 let speakGen = 0
+let turnGen = 0
+let puffGen = 0
 let audioSeq = 0
 let smokeIntensity = 0.18
 const tempAudioFiles: string[] = []
+const petPhase = createPetPhaseMachine('Idle')
 
 function sendAll(channel: string, payload: unknown) {
   windows.character.webContents.send(channel, payload)
   windows.smoke.webContents.send(channel, payload)
 }
 
-function setPose(pose: CharacterPose) {
-  sendAll('niko:pose', pose)
+function setPetPhase(to: PetPhase): boolean {
+  const from = petPhase.phase
+  const result = petPhase.tryTransition(to)
+  if (!result.ok) {
+    console.warn(`[phase] illegal ${String(result.from)}→${String(result.to)}`)
+    return false
+  }
+  if (from !== to) {
+    console.log(`[phase] ${from}→${to}`)
+    sendAll('niko:phase', to)
+    sendAll('niko:pose', petPhaseToPose(to))
+  }
+  return true
 }
 
 function setStatus(text: string) {
@@ -130,15 +148,21 @@ function sendAudioControl(opts: { interrupt?: boolean; final?: boolean }) {
     base64: '',
     mime: 'audio/wav',
     interrupt: opts.interrupt,
-    final: opts.final
+    final: opts.final,
+    gen: speakGen
   })
 }
 
 function interruptSpeech() {
   speakGen += 1
-  speaking = false
   sendAudioControl({ interrupt: true, final: true })
   cleanupTempAudio()
+}
+
+/** Barge-in: drop in-flight LLM turn and queued TTS. */
+function bargeIn() {
+  turnGen += 1
+  interruptSpeech()
 }
 
 async function sendClip(
@@ -161,15 +185,15 @@ async function sendClip(
     mime: audio.mime,
     filePath,
     fileUrl,
-    interrupt: opts.interrupt
+    interrupt: opts.interrupt,
+    gen: opts.gen
   })
 }
 
 async function speak(text: string) {
   const gen = ++speakGen
-  speaking = true
   sendAudioControl({ interrupt: true })
-  setPose('talk')
+  if (!setPetPhase('Speaking')) return
   windows.character.webContents.send('niko:subtitle', text)
   const sentences = splitSentences(text)
   let first = true
@@ -187,15 +211,11 @@ async function speak(text: string) {
   }
   if (gen !== speakGen) return
   if (first) {
-    speaking = false
     sendAudioControl({ interrupt: true, final: true })
+    if (petPhase.phase === 'Speaking') setPetPhase('Idle')
     return
   }
   sendAudioControl({ final: true })
-}
-
-function maybeIdle() {
-  if (!busy && !speaking) setPose('idle')
 }
 
 function quitApp() {
@@ -203,26 +223,28 @@ function quitApp() {
 }
 
 async function handleUtterance(text: string) {
-  if (busy) {
-    setStatus('等会儿，这口还没吐完')
-    return
-  }
+  const turn = ++turnGen
   interruptSpeech()
-  busy = true
+  setPetPhase('Listening')
   setStatus('……')
-  setPose('inhale')
+  setPetPhase('Thinking')
   try {
     const reply = await chat.talk(text)
+    if (turn !== turnGen) return
     applySmoke({ burst: true, intensity: Math.min(1, smokeIntensity + 0.15) })
-    setPose('exhale')
     await speak(reply)
   } catch (err) {
+    if (turn !== turnGen) return
     const msg = err instanceof Error ? err.message : String(err)
     await speak(`……聊崩了。${msg.slice(0, 80)}`)
   } finally {
-    busy = false
+    if (turn !== turnGen) return
     setStatus('')
-    if (!speaking) setTimeout(maybeIdle, 400)
+    if (petPhase.phase === 'Thinking') {
+      setTimeout(() => {
+        if (turn === turnGen && petPhase.phase === 'Thinking') setPetPhase('Idle')
+      }, 400)
+    }
   }
 }
 
@@ -260,18 +282,22 @@ function registerIpc() {
   )
 
   ipcMain.on('niko:ptt', (_e, down: boolean) => {
-    if (down) interruptSpeech()
-    setPose(down ? 'inhale' : speaking ? 'talk' : 'idle')
-    setStatus(down ? '吸——说' : '')
+    if (down) {
+      bargeIn()
+      if (!setPetPhase('Inhale')) setPetPhase('Listening')
+      setStatus('吸——说')
+      return
+    }
+    if (petPhase.phase === 'Inhale') setPetPhase('Listening')
+    setStatus('')
   })
 
   ipcMain.on('niko:quit', () => quitApp())
 
-  ipcMain.on('niko:speaking-end', () => {
-    if (busy) return
-    speaking = false
+  ipcMain.on('niko:speaking-end', (_e, gen?: number) => {
+    if (typeof gen === 'number' && gen !== speakGen) return
     cleanupTempAudio()
-    maybeIdle()
+    if (petPhase.phase === 'Speaking') setPetPhase('Idle')
   })
 
   ipcMain.on('niko:drag', (_e, { dx, dy }: { dx: number; dy: number }) => {
@@ -326,9 +352,17 @@ app.whenReady().then(() => {
     windows,
     onQuit: quitApp,
     onPuff: () => {
-      setPose('exhale')
+      const g = ++puffGen
+      const from = petPhase.phase
+      if (from === 'Speaking' || from === 'Listening') {
+        interruptSpeech()
+        setPetPhase('Idle')
+      }
+      setPetPhase('Exhale')
       applySmoke({ burst: true, intensity: Math.min(1, smokeIntensity + 0.2) })
-      setTimeout(() => setPose('idle'), 1400)
+      setTimeout(() => {
+        if (g === puffGen && petPhase.phase === 'Exhale') setPetPhase('Idle')
+      }, 1400)
     },
     onClear: () => applySmoke({ clear: true, intensity: 0 }),
     onToggle: () => {
