@@ -2,14 +2,16 @@
 
 给**云端 Agent**和派工人读。契约已冻结。不要改层名、画布尺寸、JSON 字段名。
 
+> **进度 / 需求 / 下一步的真源**：[project-tracker.md](./project-tracker.md)。Wave 是否完成、谁在做哪条、能不能开 Wave 2，以推进板为准。所有代号**额外可写**该文件（只更新认领、状态、快照、变更日志）。
+
 ## 0. 先过这关，再开云端（本机 / 当前对话）
 
 云端 Agent 从**远程仓库的干净 git**开工，**带不走**你电脑上没提交的文件，也带不走 `尼古喵喵角色图/` 里如果没进 git 的设定图。
 
 本机必须先做完并 **push 到 Cloud Agent 能克隆的远程**（GitHub / GitLab / Azure DevOps / Bitbucket，且已在 [Integrations](https://cursor.com/dashboard/integrations) 连上）：
 
-1. 把官方设定图放进仓库：`assets/ref/official-sheet.webp`（白底原图）以及 `assets/ref/official-sheet.png`（去底、去萌娘百科水印，P-Gen 优先用这张）。
-2. 确认已提交：`docs/agent-split.md`、`AGENTS.md`、`.cursor/environment.json`、上述设定图。
+1. 官方设定图已在仓库：`尼古喵喵角色图/50.webp`（白底原图）以及 `尼古喵喵角色图/nico_miaomiao_transparent.png`（去底，P-Gen / 切层优先用这张）。**不必**再拷到 `assets/ref/`。运行时桌宠读 `assets/pixel/`，不读设定图。
+2. 确认已提交：`docs/agent-split.md`、`docs/project-tracker.md`、`AGENTS.md`、`.cursor/environment.json`、上述设定图。
 3. `git push` 当前默认分支（下称 **基线**；本仓库是 `master`）。
 4. 付费 Cursor 方案；在 [Cloud Agents 环境](https://cursor.com/dashboard/cloud-agents#environments) 用「让 Agent 配置环境」或直接吃仓库里的 `environment.json`（会装 pnpm 与 Pillow）。
 5. 若要用云端 API 出图：在 Cloud Agents 的 Secrets 里加图像 API 密钥（例如 `OPENAI_API_KEY`）。没有密钥时，P-Gen 仍须走「模型出图 / 图生图」路径，禁止把立绘一键马赛克当成成品。
@@ -30,13 +32,13 @@
 
 P-Gen **不堵**另外四个：P-Puppet 无 PNG 时用色块占位。P-Gen 的 PR 合入后占位会被真层替换。
 
-Wave 2（克隆音色、LLM 流式、hide 烟窗）**现在不要开**。
+Wave 2（克隆音色、LLM 流式、hide 烟窗）是否开工以 [project-tracker.md](./project-tracker.md) 的启动条件为准，**不要**和 Wave 1 收尾抢 `main/index.ts`。
 
 ---
 
 ## 2. 冻结契约（P-Gen 与 P-Puppet）
 
-真源：`assets/ref/official-sheet.png`（去底优先）或 `assets/ref/official-sheet.webp`。桌宠主体不是全身立绘。
+真源：`尼古喵喵角色图/nico_miaomiao_transparent.png`（去底优先）或 `尼古喵喵角色图/50.webp`。桌宠主体不是全身立绘；落地产物在 `assets/pixel/`。
 
 | 项 | 值 |
 |----|----|
@@ -103,11 +105,11 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）**现在不要开**。
 
 ### 禁止
 
-任何 `.ts` / `.css` / `.html`，`assets/sprites/**`，`assets/live2d-layers/**`，改 `assets/ref/official-sheet.*`。
+任何 `.ts` / `.css` / `.html`，`assets/sprites/**`，`assets/live2d-layers/**`，改 `尼古喵喵角色图/**`。
 
 ### 生成流程（必须按此，不要跳成滤镜）
 
-1. **读参考** 优先 `assets/ref/official-sheet.png`，否则 `official-sheet.webp`。按辨识点写死提示词（中英均可，但要写清 mole under left eye、oversized cream tee、baggy slate pants、olive clogs、sage messy pixie hair、cat ears same color as hair、lazy half-lidded eyes、thin dark tail）。明确：`pixel art`、`limited palette`、`no anti-aliasing`、`chibi about 4 heads tall`、`full body T-pose-ish idle`、`transparent background`、`sprite for desktop pet`。
+1. **读参考** 优先 `尼古喵喵角色图/nico_miaomiao_transparent.png`，否则 `尼古喵喵角色图/50.webp`。按辨识点写死提示词（中英均可，但要写清 mole under left eye、oversized cream tee、baggy slate pants、olive clogs、sage messy pixie hair、cat ears same color as hair、lazy half-lidded eyes、thin dark tail）。明确：`pixel art`、`limited palette`、`no anti-aliasing`、`chibi about 4 heads tall`、`full body T-pose-ish idle`、`transparent background`、`sprite for desktop pet`。
 2. **出 2–4 张候选**。优先顺序：
    - 云端/Cursor 可用的图像生成工具，并把设定图当作参考图（img2img / reference）；
    - Secrets 里的图像 API（OpenAI Images、同类）；
@@ -177,9 +179,9 @@ API/工具都不可用：在 PR 说明里写清缺什么密钥，**不要**用�
 ```
 你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
 基线分支：<BASE>。请从该分支创建并只在 agent/<ID> 上工作，完成后开 Pull Request，不要推默认分支。
-先读 AGENTS.md 与 docs/agent-split.md 里你的代号整节 + 第二节契约。
-只改「可写」路径。禁止列表碰了会和其他并行 Agent 冲突。
-做完即停。不要做 Wave 2，不要切 Live2D 层，不要提交 config.json 或模型权重。
+先读 docs/project-tracker.md（认领你的 ID），再读 AGENTS.md 与 docs/agent-split.md 里你的代号整节 + 第二节契约。
+只改「可写」路径，外加 docs/project-tracker.md。禁止列表碰了会和其他并行 Agent 冲突。
+做完即停。是否开 Wave 2 以推进板启动条件为准。不要切 Live2D 层，不要提交 config.json 或模型权重。
 ```
 
 ### P-Gen（ID = `p-gen`）
@@ -188,7 +190,7 @@ API/工具都不可用：在 PR 说明里写清缺什么密钥，**不要**用�
 
 ```
 你是 P-Gen。按 docs/agent-split.md 第 3 节：用图像生成模型做出像素风猫耳少女，再切成 240×336 对齐分层。
-参考图：优先 assets/ref/official-sheet.png，否则 official-sheet.webp。禁止把该图直接缩小/抖动当成成品。
+参考图：优先 尼古喵喵角色图/nico_miaomiao_transparent.png，否则 尼古喵喵角色图/50.webp。禁止把该图直接缩小/抖动当成成品。运行时交付仍是 assets/pixel/。
 交付 assets/pixel/preview.png、layers/*.png、sheet.json、_preview-stack.png、gen-log.md。
 提交标题：assets(pixel): AI-generated layered pixel puppet
 ```
@@ -244,7 +246,7 @@ API/工具都不可用：在 PR 说明里写清缺什么密钥，**不要**用�
 
 ---
 
-## 10. Wave 2（五支 PR 都进基线之后）
+## 10. Wave 2（推进板启动条件满足之后）
 
 | 代号 | 做什么 |
 |------|--------|
@@ -253,4 +255,4 @@ API/工具都不可用：在 PR 说明里写清缺什么密钥，**不要**用�
 | W2-Shell | hide 烟窗、点击穿透、隐藏停画 |
 | W2-SFX | 吸吐短 WAV |
 
-W2-Stream 与 W2-Shell 串行。
+W2-Stream 与 W2-Shell 串行。开派前先在推进板认领 `W2-01`～`W2-04`。

@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","session_id":"err-session","model":"Composer"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Trying a shell command"}]}}
+{"type":"tool_call","subtype":"started","call_id":"sh-1","tool_call":{"shellToolCall":{"args":{"command":"false"}}}}
+{"type":"tool_call","subtype":"completed","call_id":"sh-1","tool_call":{"shellToolCall":{"args":{"command":"false"},"result":{"error":{"message":"exit 1"}}}}}
+{"type":"result","subtype":"error","is_error":true,"result":"Command failed"}

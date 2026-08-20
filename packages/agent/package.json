@@ -8,6 +8,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/parseCursorProgress.test.ts"
+  },
   "dependencies": {
     "@niko/core": "workspace:*"
   }

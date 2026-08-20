@@ -8,6 +8,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:vad": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/vad.check.ts"
+  },
   "dependencies": {
     "@niko/core": "workspace:*"
   }

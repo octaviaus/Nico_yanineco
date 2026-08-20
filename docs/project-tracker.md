@@ -70,56 +70,46 @@
 | 项 | 值 |
 |----|-----|
 | 默认分支 | `master` |
-| 当前 tip | `5a17d58` — Merge PR #10（契约对齐 240×336 @ scale=1） |
+| 当前 tip | `ed5f63b` — Merge PR #12（推进板）；其前为 #19 #18 #17 #16 #15 |
 | 像素资产 | `e7e425a` — 240×336 分层 idle（`assets/pixel/`，见 `gen-log.md`） |
 | 视觉主路径 | 像素木偶；`createCharacterRenderer` **固定**走 `PixelRenderer`（Live2D 接管是长期项 BL-02） |
 | 舞台 / 角色窗 | 舞台 `240×336`；窗 `240×432`（`geometry.ts`） |
 | TTS 默认 | Edge `zh-CN-XiaoyiNeural`，`rate: 0.85` |
 | Wave 1 | **完成**（#2 #3 #4 #5 #6 + 文档 #10） |
-| Wave 2 | **未开**（启动条件见 §4） |
+| 推进板 / Epic | **完成** · PR #12 已合入；重复草稿 #11 已关未合 |
+| P0 第一批 | **完成**：#15 A · #16 B · #17 C · #18 D 已在 `master` |
+| PetDex 旁路 | **完成** · PR #19 `petdex/`（桌宠运行时不读） |
+| Wave 1.5 路 B | **代码完成、待合入** · PR #14（draft）；本机点一下尚未做 |
+| Wave 2 / P0 第二批 | **未开**（等 #14 合入后再派 E/F/G/H） |
 | 下一 REQ | `REQ-003` |
 | 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
 | 下一 W15 | `W15-08` |
 
-### 开放中的文档/分支（非产品功能）
+### 开放 PR / 远程分支（2026-08-20 合入后）
 
-| 工作 | 分支 / PR | 说明 |
-|------|-----------|------|
-| 本推进板 | `cursor/project-tracker-9e59` · PR #12 | **认领中** · `REQ-001` |
-| 较早的推进板草稿 | PR #11 `cursor/project-tracker-45ab` | 同主题初稿；本文件为后续真源。合入后可关 #11 |
+| PR | 分支 | 内容 | 建议 |
+|----|------|------|------|
+| #14 | `cursor/close-idle-puff-opaque-ptt-5089` | 路 B：× / 停 idle puff / opaque PTT | **本机点一下后再合**。现在 `master` 已有推进板，#14 里那份过期 `docs/project-tracker.md` **必须删掉**，否则冲突 |
+| — | 已合入功能分支（#12/#15/#16/#17/#18/#19 及 `cursor/desktop-pet-landscape-doc-df18`、`cursor/project-tracker-45ab`） | 残留 | **可删远程分支** |
+
+不要再开第二套 P0-A～D。不要合已关闭的 #11。
 
 ---
 
 ## 2. 进行中需求
 
-目前两件：推进板（REQ-001）与角色窗体验收尾（REQ-002 = W15-02/03/04）。
+只剩路 B。REQ-001 / REQ-002 已随 PR #12 合入，详见 §3。
 
-### REQ-001 · 建立项目推进板
-
-| 字段 | 内容 |
-|------|------|
-| 状态 | `in_progress` |
-| 来源 | 用户：要一份进度 + 需求 + 后续方案，云端/本地 Agent 共同维护 |
-| 负责人 | cloud · `cursor/project-tracker-9e59` · PR #12 |
-| 可写 | `docs/project-tracker.md`、`AGENTS.md`、`docs/agent-split.md`、`README.md` |
-| 完成标准 | `master` 上能读到本板；`AGENTS.md` 要求开工读/收工写；`agent-split.md` 把本文件列为所有代号可写 |
-| 验证 | 文档链接指向的仓库文件存在；不改运行时代码 |
-
-完成合入后：本卡片改为 `done`，从本节删除详细表，只在 §3 Wave 表留一行。
-
-### REQ-002 · 关闭按钮 / 停 idle puff / 透明区不 PTT
+### REQ-W15-B · 路 B UX（W15-02/03/04）
 
 | 字段 | 内容 |
 |------|------|
 | 状态 | `in_progress` |
-| 来源 | 用户路 B：W15-02、W15-03、W15-04 同一 Agent、同一 PR |
+| 来源 | 体验收尾：关闭入口、停 idle puff、透明不 PTT |
 | 负责人 | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14 |
-| 覆盖 ID | W15-02、W15-03、W15-04 |
-| 可写 | `character.html/css/ts`、`preload/index.ts`、`env.d.ts`、`main/index.ts`（只加 quit IPC）、本文件认领 |
-| 禁止 | `smoke.ts` / `SmokeField` / Wave 2 / W15-05 / 像素重画 |
-| 完成标准 | × 走 `niko.quit()`→`app.quit()`；角色窗不再按 `idlePuffSeconds` 自动喷；仅不透明像素才 PTT |
-| 验证 | `npx pnpm@9.15.0 --filter @niko/desktop build`；本机关× / 等 22s / 点透明处与身体 |
+| 完成标准 | 合入 `master` 且本机点过 × / 22s 不再喷 / 透明不录音 |
+| 阻塞 | 无头云不能代替本机点一下；合入前必须丢掉 PR 里过期的 `docs/project-tracker.md` |
 
 ---
 
@@ -137,34 +127,168 @@
 | W1-06 | 按句 TTS 队列 + RMS 口型 | PR #5 `aa3d52b` | `done` |
 | W1-07 | Cloud Agent 环境与拆分文档 | `15fc40a` | `done` |
 | W1-08 | 契约文档对齐 240×336 @ scale=1 | PR #10 `5a17d58` | `done` |
-| W1-09 | 推进板（本文件） | REQ-001 | `in_progress` |
+| W1-09 | 推进板（本文件） | REQ-001 · PR #12 `ed5f63b` | `done` |
 
 ### Wave 1.5 — 体验收尾（建议在 Wave 2 前做带 ★ 的）
 
 | ID | 内容 | 优先级 | 状态 | 建议改哪里 | 备注 |
 |----|------|--------|------|------------|------|
-| W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `planned` | 不改代码，出报告 | 无头云 VM 不能代替；负责人应是 **本地** Agent 或用户 |
-| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | `character.html/css/ts`、`preload`、`main/index.ts`、`env.d.ts` | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14（与 W15-03/04 同 PR） |
-| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | `character.ts` | 同上；托盘「吐一口」与对话喷烟保留 |
-| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | `character.ts` | 同上；热键 / 拖动 / 输入框 /「喷」不受影响 |
+| W15-01 ★ | 本机非脸部验收（启动/聊/TTS/口型/拖/PTT/烟） | P0 | `done` | 不改代码 | **用户口头验收**（2026-08-20）；无书面分项报告 |
+| W15-02 ★ | 角色窗「关闭桌宠」 | P0 | `in_progress` | 与 03/04 **同一云端** · PR #14 | 代码已加顶栏 × → `niko.quit()` → `app.quit()`；待本机点一下 + 合入 |
+| W15-03 | 去掉角色窗按 `idlePuffSeconds` 自动吐烟 | P1 | `in_progress` | 同上 · PR #14 | `boot()` 里 `setInterval` 已删；`idlePuffSeconds` 字段保留 |
+| W15-04 | 透明像素不要触发按住说话 | P1 | `in_progress` | 同上 · PR #14 | 左键先 `extract.pixels` 1×1，alpha ≥ 16 才 `startHold`；**不是**点击穿透 |
 | W15-05 | `mouth-smoke.png` 接入 exhale | P2 | `planned` | `assets/pixel/sheet.json` + `PixelRenderer` | 文件已在 `layers/`，但 `slots.mouth` 只有 `closed`/`open` |
-| W15-06 | 像素脸/手继续 polish | P1 | `planned` | **只** `assets/pixel/**` | PR #7 #8 #9 已关未合；当前以 `e7e425a` 为准 |
-| W15-07 | 把设定图落到 `assets/ref/official-sheet.png` | P1 | `planned` | `assets/ref/**`（新建） | 契约要求这张图；仓库里目前只有 `尼古喵喵角色图/` |
+| W15-06 | 像素脸/手继续 polish | P1 | `deferred` | **只** `assets/pixel/**` | 用户确认新像素资产已落地（`e7e425a` / `assets/pixel/`）。未再要求重画 |
+| W15-07 | 把设定图拷到 `assets/ref/official-sheet.png` | P1 | `cancelled` | — | **不是**像素资产任务。旧派工约定的别名；真源已在 `尼古喵喵角色图/`，产物已在 `assets/pixel/`。已改正文契约 |
 
 历史尝试（不要当现行任务）：PR #7 手+嘴、#8 只接手、#9 眼嘴嵌入脸 —— 均 `CLOSED`。
+
+### P0 第一批（包级，已合入 `master`）
+
+| Agent | Story | PR | 状态 |
+|-------|--------|-----|------|
+| P0-A | ST-STATE-01 状态机类型 | #15 `57a69ef` | `done` |
+| P0-B | ST-STATE-02 PixelRenderer 切层 | #16 `9dabe5f` | `done` |
+| P0-C | ST-VOICE-01 可选 VAD | #17 `99e8607` | `done` |
+| P0-D | ST-VIZ-01/02 AgentPhase + CLI 解析 | #18 `9afb386` | `done` |
+| 旁路 | PetDex/Codex 包 `petdex/` | #19 `b8a83da` | `done`（非桌宠运行时） |
+
+桌面接线 **未开**：P0-E 状态机+打断、P0-F 流式 ASR、P0-G 角色窗换脸、P0-H hide 烟窗+点击穿透。等 **#14 合入** 后再派（E 与 F 可并行；G 等 E；H 等 G）。
 
 ---
 
 ## 4. 后续开发方案
 
+### 4.0 派工图（2026-08-20 更新）
+
+Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P-Gen / 不要做 C 路**。
+
+**你先做（人）：** 本机点 #14 → 从该 PR **删掉** `docs/project-tracker.md` → 合入。然后可派 P0-E（接线+打断）与 P0-F（流式 ASR）。不要再派 A～D。
+
+#### 路况
+
+| 路 | ID | 状态 | 谁 | 说明 |
+|----|-----|------|----|------|
+| A | W15-01 | **`done`** | 本地 / 用户 | 用户确认本机验收已做完 |
+| B | W15-02+03+04 | **代码完成 · PR #14** | cloud · `cursor/close-idle-puff-opaque-ptt-5089` | 关闭 × + 去掉角色窗自动 puff + 透明区不 PTT。独占 `character.ts` / `main/index.ts` 直到合入 |
+| C | W15-07 | **`cancelled`** | — | 只是把设定图再拷到 `assets/ref/`。**不是**新像素图。源图已在 `尼古喵喵角色图/`，木偶已在 `assets/pixel/` |
+| D | W15-06 | **`deferred`** | — | 用户确认像素资产已处理好。除非再说「脸还要改」，否则不要重画 |
+
+**路 B 审查（2026-08-20，对照 `origin/master` @ `046c8d1`）**
+
+| 项 | 结论 |
+|----|------|
+| 范围 | 三个 ID 都在 PR #14：`character.html/css/ts`、preload、`env.d.ts`、`main/index.ts` |
+| GitHub | OPEN · **draft** · `MERGEABLE` / `CLEAN` · 无 review / 无 CI |
+| 构建 | `npx pnpm@9.15.0 --filter @niko/desktop build` 通过（独立 worktree） |
+| 未做（正确） | 无 `setIgnoreMouseEvents`；未改 `smoke.ts` / `windows.ts` / 像素资产 |
+| 合入卫生 | PR **整篇新增**一份过期 `docs/project-tracker.md`（从 `5a17d58` 岔出）。**先合 #12 再合 #14 会打该文件**；#14 应丢掉 tracker 或 rebase 后只留认领 hunk |
+| 本机仍缺 | 点 × 退进程、等 22s 不再自动喷、透明处不录音、身体仍可 PTT、托盘退出仍在 |
+
+剩下和 B 可并行的小文档：ISS-04 README 仍写 Live2D 会接管——可并进 B 或单独一条，别碰 `character.ts`。
+
+#### 两套图不要混
+
+| 路径 | 是什么 | 桌宠读它吗 |
+|------|--------|------------|
+| `尼古喵喵角色图/` | 官方设定（白底 `50.webp`、去底 `nico_miaomiao_transparent.png`） | 否 |
+| `assets/pixel/` | 已经切好的 240×336 分层木偶 | **是**（运行时） |
+| `assets/ref/` | 旧云端提示词里的别名，**仓库里没有、也不需要再建** | 否 |
+| `petdex/`（PR #19） | 给 PetDex/Codex 的 192×208 精灵表导出 | 否 |
+
+#### 必须本地（云端可以写代码，但不能当验收通过）
+
+| ID | 为什么必须本地 |
+|----|----------------|
+| W15-02/03/04 的**点一下验收** | 关闭、误触 PTT、自动吐烟只能在真桌面确认 |
+| W15-06 若以后重开 | 脸/手是否还像设定图 |
+| W2-01 克隆音色 | 要本机 9880 / GPT-SoVITS，权重不进 git |
+| Cursor 桥 `dispatch_cursor` | 调的是你电脑上的 Cursor CLI |
+| `config.json` / API 密钥 / TTS 权重 | 禁止进 git，只在本机 |
+
+#### 现在不要并行 / 不要开
+
+| ID | 原因 |
+|----|------|
+| W15-05 与 W15-06 | 都动嘴层 / `sheet.json`。两者目前都不开，除非用户再要求 |
+| W2-02 与 W2-03 | 都改 `main/index.ts`，**串行** |
+| 整波 Wave 2 壳（Stream/Shell/SFX 接线） | 等 W15-02 合入。P0-A～D 已有 PR，不要再派第二套 |
+| P0-E / G / H | 抢 `character.ts` / `main/index.ts`，等 #14 合入 |
+| 两个云端同时改 `character.ts` 或同时改 `assets/pixel/**` | 必冲突 |
+
+#### Wave 2 以后怎么拆（先别派）
+
+| ID | 云端能否写 | 并行？ | 本地还要做什么 |
+|----|------------|--------|----------------|
+| W2-01 Clone | 只能写说明 / `config.example.json` | 可与 W2-04 并行 | **本机**跑 9880 才算完成 |
+| W2-02 Stream | 能写 `packages/core` + `main/index.ts` | **不能**与 W2-03 同时 | 本机听「边生成边出声」 |
+| W2-03 Shell | 能写 `windows.ts` / 烟窗 / `main` | **不能**与 W2-02 同时 | 本机试 hide、点击穿透 |
+| W2-04 SFX | 能加 wav + 小播放逻辑 | 避开 `main/index.ts` 时可与 Clone 并行 | 本机听吸/吐 |
+
 ### 4.1 建议下一件（无人指定任务时按此取）
 
-1. 合入 **REQ-001**（本板）。
-2. **W15-01** 本机验收（本地）。云端不要假装点过 Electron。
-3. **W15-02** 关闭按钮（小改动，先认领再动 `character.ts` / `main`）。
-4. **W15-07** 补 `assets/ref/official-sheet.png`（从 `尼古喵喵角色图/` 去底拷入，不要另画一只猫）。
-5. 用户在意长相再做 **W15-06**；否则进 Wave 2。
-6. Wave 2 按 4.2，**W2-02 与 W2-03 不得并行**（都改 `main/index.ts`）。
+1. 本机点一下 **#14**，从该 PR **删掉**过期 `docs/project-tracker.md` 后再合。不要再开第二条路 B。
+2. #14 合入后派 **P0-E**（`character.ts` / `main`）与 **P0-F**（只 `packages/voice`）。不要现在开 P0-G / P0-H。
+3. 已合入的功能分支可删。不要改 `assets/pixel/` 去对齐 `petdex/` 的 192×208 表。
+
+路 B 已有 PR，下面提示词仅备查，不要再开第二条路 B。
+
+### 路 B 提示词（整段复制）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠（github.com/octaviaus/Nico_yanineco）。
+
+基线：origin/master。从该分支新建自己的功能分支，完成后开 Pull Request，不要推 master，不要复用 docs/project-tracker 那条文档分支。
+
+先读 AGENTS.md。若仓库里已有 docs/project-tracker.md，再读它：认领 W15-02、W15-03、W15-04（三个 ID 同一负责人、同一 PR），开工标 in_progress 并写上分支名。
+
+任务（路 B，必须同一个 Agent 做完，禁止拆成三个并行 PR）：
+
+1) W15-02 角色窗关闭桌宠
+- 现在只能托盘「退出」。window-all-closed 故意不退出（托盘保活）。
+- 在角色窗顶栏加一个小「×」（#drag 那一行右侧）。按钮必须 -webkit-app-region: no-drag，不要让整个顶栏都不能拖。
+- 点击 → preload 暴露 niko.quit() → ipc → 主进程 app.quit()。不要只用 BrowserWindow.close()：关窗不会退出进程。
+- 托盘「退出」保留，走同一条 quit。
+- 样式跟现有米白/石板灰 UI，别做成大号系统标题栏。
+
+2) W15-03 去掉角色窗自动吐烟
+- apps/desktop/src/renderer/character.ts 的 boot() 里有 window.setInterval，按 idlePuffSeconds（默认 22s）自动 setPose('exhale') + mouthSmoke.burst。删掉这段 interval。
+- 保留：托盘「吐一口」、对话/工具触发的烟、按住说话时的 inhale。
+- 不要改 smoke.ts / SmokeField 的全屏烟窗 idle-stop（那是已完成的 R-Smoke）。
+- config 里的 idlePuffSeconds 字段可以留着不删；角色窗只要不再用它自动喷。
+
+3) W15-04 透明像素不要开始按住说话
+- 现状：#stage 的 canvas 任意左键 pointerdown 都 startHold()（PTT）。
+- 改成：只有点到角色不透明像素才 PTT。点到窗口里角色周围的全透明处不要录音。
+- 热键 Ctrl+Shift+M、顶栏拖动、输入框、「喷」按钮不受影响。
+- 这不是 Wave 2 的点击穿透（不要 setIgnoreMouseEvents 让鼠标点到后面的桌面）。只是不要在透明处启动录音。
+- 注意 Pixi resolution / devicePixelRatio，坐标要对准 canvas 像素。嘴边粒子尽量别当成身体；可用 alpha 阈值（例如 <16 当透明）。
+
+可写（尽量只动这些）：
+- apps/desktop/src/renderer/character.html
+- apps/desktop/src/renderer/character.css
+- apps/desktop/src/renderer/character.ts
+- apps/desktop/src/preload/index.ts
+- apps/desktop/src/env.d.ts
+- apps/desktop/src/main/index.ts（只加 quit IPC，不要趁机做 LLM 流式或 hide 烟窗）
+- docs/project-tracker.md（仅认领/状态/变更日志，禁止整篇重排）
+
+禁止：
+- assets/pixel/**、像素重画、assets/ref、Live2D 切层
+- packages/voice/**、packages/core/**（除非类型必须）
+- smoke.ts、SmokeField.ts、windows.ts、geometry.ts
+- config.json、.env、模型权重
+- Wave 2（流式 TTS、hide 烟窗、点击穿透）
+- W15-05 mouth-smoke 接入
+
+验证：
+- npx pnpm@9.15.0 --filter @niko/desktop build 必须通过
+- 无头云 VM 不要 pnpm dev，不要假装点过窗口；在 PR 里写明本机还需验收：关×、等 22s 不再自动吐烟、点透明处不录音、点身体仍可按住说话、托盘退出仍在
+- 提交标题：feat(desktop): close button, stop idle puff, opaque-only PTT
+- 做完即停
+```
+3. 不要开 C、不要重做像素资产。W15-05 仅在你想让吐烟切 `mouth-smoke` 层时再做。
+P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) §6。四条 P0 不能同时改桌面：现在并行 P0-A～D；接线/打断/换脸/穿透见第二批。
 
 ### 4.2 Wave 2（启动条件满足后再派工）
 
@@ -177,12 +301,11 @@
 
 **Wave 2 启动条件**
 
-- [ ] REQ-001 已合入（Agent 有共同看板）
-- [ ] W15-01 有本机结论（通过，或写明仍开着的 P0）
-- [ ] W15-02 关闭入口已合入（或用户书面说先不做）
-- [ ] 像素资产不再频繁整树重写（避免和 W15-06 互踩）
+- [x] W15-01 有本机结论（用户口头确认已做完）
+- [ ] W15-02 关闭入口已合入（PR #14 仍开；P0-A～D 已在 master）
+- [x] 像素资产不再频繁整树重写（用户确认已落地；W15-06 deferred）
 
-派工提示词与文件独占：合入后仍以 [agent-split.md §8–§10](./agent-split.md) 为准，**先在本板认领对应 W2-xx**。
+派工提示词与文件独占：合入后仍以 [agent-split.md §8–§10](./agent-split.md) 为准，**先在本板认领对应 W2-xx**。P0/P1 Story 级可写路径以 [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) 为准，**不要改冻结契约**。
 
 ### 4.3 长期 backlog（未排期）
 
@@ -204,13 +327,13 @@
 
 | ID | 问题 | 严重度 | 关联 | 状态 |
 |----|------|--------|------|------|
-| ISS-01 | 角色窗仍按 `idlePuffSeconds`（默认 22s）自动 `exhale` + burst | P1 | W15-03 | `in_progress` |
-| ISS-02 | 点到透明 canvas 也会进 PTT | P1 | W15-04 | `in_progress` |
+| ISS-01 | 角色窗仍按 `idlePuffSeconds`（默认 22s）自动 `exhale` + burst | P1 | W15-03 | `in_progress`（PR #14 已删 interval） |
+| ISS-02 | 点到透明 canvas 也会进 PTT | P1 | W15-04 | `in_progress`（PR #14 opaque-only） |
 | ISS-03 | `mouth-smoke.png` 未进入 `sheet.json` 的 mouth slot；渲染只切 open/closed | P2 | W15-05 | `planned` |
 | ISS-04 | README 仍写「有 model3 则 Live2D」；实现已固定像素 | P3 | 文档 | `planned` |
 | ISS-05 | 无 GitHub Issue、无 PR 模板 | P3 | BL-07 | `planned` |
 | ISS-06 | `character.ts` 里 Pixi `antialias: true`（贴图已是 nearest） | P3 | 像素渲染 | `planned` |
-| ISS-07 | 契约要求的 `assets/ref/official-sheet.*` 不在仓库里 | P1 | W15-07 | `planned` |
+| ISS-07 | 契约曾要求 `assets/ref/official-sheet.*` | — | W15-07 | `cancelled`（真源改为 `尼古喵喵角色图/`，见 AGENTS.md） |
 
 已处理、只作备忘：PR #10 把占位几何改到 240×336；无 PNG 时才走色块。
 
@@ -224,11 +347,12 @@
 | `packages/core` | 人设、LLM、工具循环 |
 | `packages/voice` | STT / TTS |
 | `packages/agent` | 本机工具 + Cursor CLI 桥 |
-| `assets/pixel/` | 运行时分层木偶（真源产物） |
 | `尼古喵喵角色图/` | 官方源图（`50.webp`、`nico_miaomiao_transparent.png`），不要删 |
-| `assets/ref/` | **尚未入库**；`agent-split.md` 希望这里放 `official-sheet.png`（见 ISS-07 / W15-07） |
+| `assets/pixel/` | 运行时分层木偶（真源产物，已落地） |
+| `assets/ref/` | **不使用**。旧 Cloud 提示词别名，已从契约里删掉 |
 | `assets/sprites/` | 旧全身精灵；像素路径不再依赖它显示 |
 | `assets/live2d-layers/` | **停止继续切**；不是当前桌宠主路径 |
+| `petdex/` | **旁路** PetDex/Codex 包（PR #19）；桌宠不读 |
 | `docs/agent-split.md` | 并行派工契约（少改） |
 | `docs/visual-optimization-brief.md` | 视觉真源与验收（人设长相） |
 | `docs/persona.md` | 人设文案 |
@@ -243,6 +367,8 @@
 | 文档 | 改的频率 | 用途 |
 |------|----------|------|
 | **本文件** | 每个功能 PR | 进度、认领、路线图 |
+| [pm-epics-p0-p1.md](./pm-epics-p0-p1.md) | P0/P1 立项时 | Epic/Story、参考仓库、可写路径 |
+| [desktop-pet-landscape.md](./desktop-pet-landscape.md) | 竞品调研 | Catalog R01–R19、§6 PM 清单（PR #13） |
 | [AGENTS.md](../AGENTS.md) | 很少 | Agent 入口；指向本板 |
 | [agent-split.md](./agent-split.md) | 契约变了才改 | 文件独占、云端提示词 |
 | [visual-optimization-brief.md](./visual-optimization-brief.md) | 视觉策略变了才改 | 设定图真源 |
@@ -276,7 +402,17 @@
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
-| 2026-08-20 | W15-02 / W15-03 / W15-04 | 同一 PR 认领：关闭按钮、停 idle puff、透明区不 PTT | cloud · `cursor/close-idle-puff-opaque-ptt-5089` · PR #14 |
+| 2026-08-20 | — | 用户指示：关 #11；合入 #12 #15 #16 #17 #18 #19。`master` = `ed5f63b`。仍开：#14 | 用户 + cloud |
+| 2026-08-20 | P0 | 第一批已开 PR：#15 A、#16 B、#17 C、#18 D；旁路 #19 petdex。分支处理写入 §1 | cloud · PR #12 |
+| 2026-08-20 | W15-02 | 路 B 代码审查通过（build CLEAN）；P0-A～D **可以立刻派**，不必等 #14 合入；E/G/H 仍等 B | cloud · PR #12 |
+| 2026-08-20 | — | 景观文档 PR #13 已合入 `046c8d1`；快照 tip 从 `5a17d58` 更新 | cloud · PR #12 |
+| 2026-08-20 | P0 | 四条 P0 都做：§6 写入 P0-A～H 提示词；第一批 A–D 可并行 | cloud · PR #12 |
+| 2026-08-20 | REQ-002 | 按景观 §6 写出 P0/P1 Epic+Story：`docs/pm-epics-p0-p1.md`（未改 agent-split 契约） | cloud · PR #12 |
+| 2026-08-20 | W15-02 | 路 B 已有 PR #14；推进板标 in_progress | cloud · PR #12 |
+| 2026-08-20 | W15-01 | 用户确认 A 路本机验收已做完 | 用户口头 |
+| 2026-08-20 | W15-07 | **取消 C 路**：不是像素任务；设定图已在 `尼古喵喵角色图/`，木偶已在 `assets/pixel/`。契约不再要求 `assets/ref/` | cloud · PR #12 |
+| 2026-08-20 | W15-06 | 像素 polish 延后：用户确认新像素资产已处理 | 用户口头 |
+| 2026-08-20 | — | 用户要求梳理下一步；写入 §4.0 派工图（3 路并行 + 本地验收） | cloud · PR #12 |
 | 2026-08-19 | ISS-07 | 记下 `assets/ref/` 缺失；设定图仍在 `尼古喵喵角色图/` | cloud · PR #12 |
 | 2026-08-19 | REQ-001 | 推进板开 PR #12；相对链接校验通过 | cloud · `cursor/project-tracker-9e59` |
 | 2026-08-19 | REQ-001 | 初版推进板：Wave1 完成态、W15/W2/backlog、Agent 认领协议 | cloud · `cursor/project-tracker-9e59` |

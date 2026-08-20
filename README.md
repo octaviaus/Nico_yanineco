@@ -2,6 +2,8 @@
 
 猫耳少女桌面宠物：语气颓、爱抽烟，能语音闲聊，也能把写代码的活丢给 Cursor。
 
+开发进度、进行中的需求、后续方案（给云端/本地 Agent 共同维护）：[docs/project-tracker.md](docs/project-tracker.md)。
+
 ## 跑起来
 
 需要 Node 20+。本机若没有全局 pnpm，用 `npx pnpm`。PowerShell 若禁止运行 `npx.ps1`，改用 `npx.cmd`：
