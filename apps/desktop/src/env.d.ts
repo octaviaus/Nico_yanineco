@@ -7,6 +7,7 @@ interface NikoApi {
   sendText: (text: string) => Promise<unknown>
   sendAudio: (buffer: ArrayBuffer, mime: string) => Promise<unknown>
   ptt: (down: boolean) => void
+  quit: () => void
   speakingEnd: () => void
   drag: (dx: number, dy: number) => void
   onPose: (cb: (pose: import('@niko/core').CharacterPose) => void) => void

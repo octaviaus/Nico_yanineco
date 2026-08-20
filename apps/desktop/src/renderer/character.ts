@@ -1,4 +1,4 @@
-import { Application, Ticker } from 'pixi.js'
+import { Application, Rectangle, Ticker } from 'pixi.js'
 import { createCharacterRenderer } from './lib/createCharacterRenderer'
 import { SmokeField, makeCloudTexture } from './lib/SmokeField'
 import type { CharacterRenderer } from './lib/CharacterRenderer'
@@ -10,6 +10,11 @@ const bubble = document.getElementById('bubble')!
 const statusEl = document.getElementById('status')!
 const form = document.getElementById('chat') as HTMLFormElement
 const input = document.getElementById('text') as HTMLInputElement
+const quitBtn = document.getElementById('quit') as HTMLButtonElement
+
+/** Alpha below this is empty space, not a hold-to-talk hit. */
+const OPAQUE_ALPHA = 16
+const HIT_PIXEL = new Rectangle(0, 0, 1, 1)
 
 const app = new Application({
   width: CHARACTER_STAGE_WIDTH,
@@ -31,14 +36,13 @@ type AudioClip = {
   final?: boolean
 }
 
-let renderer: CharacterRenderer
+let renderer: CharacterRenderer | undefined
 let talking = false
 let holding = false
 let mediaRecorder: MediaRecorder | null = null
 let chunks: Blob[] = []
 let sttProvider: string = 'webspeech'
-let idlePuff = 22
-let mouthSmoke: SmokeField
+let mouthSmoke: SmokeField | undefined
 let currentPose: CharacterPose = 'idle'
 const clipQueue: AudioClip[] = []
 let queuePlaying = false
@@ -57,7 +61,6 @@ const timeDomain = new Uint8Array(1024)
 async function boot() {
   const cfg = await window.niko.getConfig()
   sttProvider = cfg.sttProvider
-  idlePuff = cfg.idlePuffSeconds
   const model = await window.niko.getLive2DModel()
   const core = await window.niko.getCubismCore()
   renderer = await createCharacterRenderer(app.stage, CHARACTER_STAGE_WIDTH, CHARACTER_STAGE_HEIGHT, model, core)
@@ -66,24 +69,10 @@ async function boot() {
   app.stage.addChild(mouthSmoke.container)
 
   Ticker.shared.add(() => {
-    const mouth = renderer.getMouthWorld()
+    const mouth = renderer?.getMouthWorld()
+    if (!mouth || !mouthSmoke) return
     mouthSmoke.tick(mouth, talking || currentPose === 'exhale' || currentPose === 'talk')
   })
-
-  window.setInterval(() => {
-    if (talking) return
-    currentPose = 'exhale'
-    renderer.setPose('exhale')
-    renderer.setSmokeParam(0.7)
-    const m = renderer.getMouthWorld()
-    mouthSmoke.burst(m.x, m.y, 10)
-    window.setTimeout(() => {
-      if (!talking && !holding) {
-        currentPose = 'idle'
-        renderer.setPose('idle')
-      }
-    }, 1400)
-  }, Math.max(8, idlePuff) * 1000)
 }
 
 window.niko.onPose((pose) => {
@@ -114,7 +103,7 @@ window.niko.onSmoke((cmd) => {
   if (typeof cmd.intensity === 'number') mouthSmoke?.setIntensity(cmd.intensity)
   if (cmd.burst) {
     const m = renderer?.getMouthWorld()
-    if (m) mouthSmoke.burst(m.x, m.y, 16)
+    if (m) mouthSmoke?.burst(m.x, m.y, 16)
   }
 })
 
@@ -126,9 +115,16 @@ form.addEventListener('submit', async (e) => {
   await window.niko.sendText(text)
 })
 
+quitBtn.addEventListener('click', (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  window.niko.quit()
+})
+
 const canvas = app.view as HTMLCanvasElement
 canvas.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return
+  if (!isOpaqueAtEvent(e)) return
   void startHold()
 })
 window.addEventListener('pointerup', () => {
@@ -139,6 +135,61 @@ window.niko.onHotkeyPtt(() => {
   if (holding) void stopHold()
   else void startHold()
 })
+
+function stagePixelFromCss(
+  cssX: number,
+  cssY: number,
+  cssW: number,
+  cssH: number,
+  stageW: number,
+  stageH: number
+): { x: number; y: number } | null {
+  if (cssW <= 0 || cssH <= 0) return null
+  if (cssX < 0 || cssY < 0 || cssX >= cssW || cssY >= cssH) return null
+  return {
+    x: Math.min(stageW - 1, Math.max(0, Math.floor((cssX / cssW) * stageW))),
+    y: Math.min(stageH - 1, Math.max(0, Math.floor((cssY / cssH) * stageH)))
+  }
+}
+
+function pixelsHaveOpaque(
+  pixels: Uint8Array | Uint8ClampedArray,
+  threshold = OPAQUE_ALPHA
+): boolean {
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] >= threshold) return true
+  }
+  return false
+}
+
+function isOpaqueAtEvent(e: PointerEvent): boolean {
+  if (!renderer || !mouthSmoke) return false
+  const canvas = app.view as HTMLCanvasElement
+  const rect = canvas.getBoundingClientRect()
+  const pixel = stagePixelFromCss(
+    e.clientX - rect.left,
+    e.clientY - rect.top,
+    rect.width,
+    rect.height,
+    CHARACTER_STAGE_WIDTH,
+    CHARACTER_STAGE_HEIGHT
+  )
+  if (!pixel) return false
+
+  HIT_PIXEL.x = pixel.x
+  HIT_PIXEL.y = pixel.y
+  const smoke = mouthSmoke.container
+  const prevVisible = smoke.visible
+  smoke.visible = false
+  try {
+    const pixels = app.renderer.extract.pixels(app.stage, HIT_PIXEL)
+    return pixelsHaveOpaque(pixels)
+  } catch {
+    return false
+  } finally {
+    smoke.visible = prevVisible
+  }
+}
 
 async function startHold() {
   if (holding) return
