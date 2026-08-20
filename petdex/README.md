@@ -20,6 +20,7 @@ petdex/niko-miao.zip          # 根目录就是 pet.json + spritesheet.webp
 - `spriteVersionNumber`: **2**
 - 行 0–8：`idle`（点烟）· `running-right` · `running-left` · `waving` · `jumping` · `failed` · `waiting` · `running`（干活抽烟）· `review`
 - 行 9–10：`look-directions-a`（八向转身）· `look-directions-b`（视线）
+- idle 慢点烟；干活行（`running`）叼烟吐一小口。走路/挥手做了持帧，`pet.json` 里 `animation.durationMs` 约 220–280ms
 - 未用格留空（透明）
 
 ```json
