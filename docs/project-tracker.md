@@ -200,7 +200,62 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 ### 4.1 建议下一件（无人指定任务时按此取）
 
 1. 合入 **REQ-001**（本板 PR #12；关 #11）。
-2. 开 **路 B**：一个云端 Agent 做 W15-02+03+04。
+2. 开 **路 B**：一个云端 Agent 做 W15-02+03+04。复制下面整段提示词到**新的** Cloud/本地对话（不要复用本推进板对话）。
+
+### 路 B 提示词（整段复制）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠（github.com/octaviaus/Nico_yanineco）。
+
+基线：origin/master。从该分支新建自己的功能分支，完成后开 Pull Request，不要推 master，不要复用 docs/project-tracker 那条文档分支。
+
+先读 AGENTS.md。若仓库里已有 docs/project-tracker.md，再读它：认领 W15-02、W15-03、W15-04（三个 ID 同一负责人、同一 PR），开工标 in_progress 并写上分支名。
+
+任务（路 B，必须同一个 Agent 做完，禁止拆成三个并行 PR）：
+
+1) W15-02 角色窗关闭桌宠
+- 现在只能托盘「退出」。window-all-closed 故意不退出（托盘保活）。
+- 在角色窗顶栏加一个小「×」（#drag 那一行右侧）。按钮必须 -webkit-app-region: no-drag，不要让整个顶栏都不能拖。
+- 点击 → preload 暴露 niko.quit() → ipc → 主进程 app.quit()。不要只用 BrowserWindow.close()：关窗不会退出进程。
+- 托盘「退出」保留，走同一条 quit。
+- 样式跟现有米白/石板灰 UI，别做成大号系统标题栏。
+
+2) W15-03 去掉角色窗自动吐烟
+- apps/desktop/src/renderer/character.ts 的 boot() 里有 window.setInterval，按 idlePuffSeconds（默认 22s）自动 setPose('exhale') + mouthSmoke.burst。删掉这段 interval。
+- 保留：托盘「吐一口」、对话/工具触发的烟、按住说话时的 inhale。
+- 不要改 smoke.ts / SmokeField 的全屏烟窗 idle-stop（那是已完成的 R-Smoke）。
+- config 里的 idlePuffSeconds 字段可以留着不删；角色窗只要不再用它自动喷。
+
+3) W15-04 透明像素不要开始按住说话
+- 现状：#stage 的 canvas 任意左键 pointerdown 都 startHold()（PTT）。
+- 改成：只有点到角色不透明像素才 PTT。点到窗口里角色周围的全透明处不要录音。
+- 热键 Ctrl+Shift+M、顶栏拖动、输入框、「喷」按钮不受影响。
+- 这不是 Wave 2 的点击穿透（不要 setIgnoreMouseEvents 让鼠标点到后面的桌面）。只是不要在透明处启动录音。
+- 注意 Pixi resolution / devicePixelRatio，坐标要对准 canvas 像素。嘴边粒子尽量别当成身体；可用 alpha 阈值（例如 <16 当透明）。
+
+可写（尽量只动这些）：
+- apps/desktop/src/renderer/character.html
+- apps/desktop/src/renderer/character.css
+- apps/desktop/src/renderer/character.ts
+- apps/desktop/src/preload/index.ts
+- apps/desktop/src/env.d.ts
+- apps/desktop/src/main/index.ts（只加 quit IPC，不要趁机做 LLM 流式或 hide 烟窗）
+- docs/project-tracker.md（仅认领/状态/变更日志，禁止整篇重排）
+
+禁止：
+- assets/pixel/**、像素重画、assets/ref、Live2D 切层
+- packages/voice/**、packages/core/**（除非类型必须）
+- smoke.ts、SmokeField.ts、windows.ts、geometry.ts
+- config.json、.env、模型权重
+- Wave 2（流式 TTS、hide 烟窗、点击穿透）
+- W15-05 mouth-smoke 接入
+
+验证：
+- npx pnpm@9.15.0 --filter @niko/desktop build 必须通过
+- 无头云 VM 不要 pnpm dev，不要假装点过窗口；在 PR 里写明本机还需验收：关×、等 22s 不再自动吐烟、点透明处不录音、点身体仍可按住说话、托盘退出仍在
+- 提交标题：feat(desktop): close button, stop idle puff, opaque-only PTT
+- 做完即停
+```
 3. 不要开 C、不要重做像素资产。W15-05 仅在你想让吐烟切 `mouth-smoke` 层时再做。
 4. Wave 2 仍等 W15-02 合入（或你说先不做关闭按钮）。**W2-02 与 W2-03 不得并行**。
 
