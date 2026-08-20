@@ -10,7 +10,7 @@
 
 本机必须先做完并 **push 到 Cloud Agent 能克隆的远程**（GitHub / GitLab / Azure DevOps / Bitbucket，且已在 [Integrations](https://cursor.com/dashboard/integrations) 连上）：
 
-1. 把官方设定图放进仓库：`assets/ref/official-sheet.webp`（白底原图）以及 `assets/ref/official-sheet.png`（去底、去萌娘百科水印，P-Gen 优先用这张）。
+1. 官方设定图已在仓库：`尼古喵喵角色图/50.webp`（白底原图）以及 `尼古喵喵角色图/nico_miaomiao_transparent.png`（去底，P-Gen / 切层优先用这张）。**不必**再拷到 `assets/ref/`。运行时桌宠读 `assets/pixel/`，不读设定图。
 2. 确认已提交：`docs/agent-split.md`、`docs/project-tracker.md`、`AGENTS.md`、`.cursor/environment.json`、上述设定图。
 3. `git push` 当前默认分支（下称 **基线**；本仓库是 `master`）。
 4. 付费 Cursor 方案；在 [Cloud Agents 环境](https://cursor.com/dashboard/cloud-agents#environments) 用「让 Agent 配置环境」或直接吃仓库里的 `environment.json`（会装 pnpm 与 Pillow）。
@@ -38,7 +38,7 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）是否开工以 [project-trac
 
 ## 2. 冻结契约（P-Gen 与 P-Puppet）
 
-真源：`assets/ref/official-sheet.png`（去底优先）或 `assets/ref/official-sheet.webp`。桌宠主体不是全身立绘。
+真源：`尼古喵喵角色图/nico_miaomiao_transparent.png`（去底优先）或 `尼古喵喵角色图/50.webp`。桌宠主体不是全身立绘；落地产物在 `assets/pixel/`。
 
 | 项 | 值 |
 |----|----|
@@ -105,11 +105,11 @@ Wave 2（克隆音色、LLM 流式、hide 烟窗）是否开工以 [project-trac
 
 ### 禁止
 
-任何 `.ts` / `.css` / `.html`，`assets/sprites/**`，`assets/live2d-layers/**`，改 `assets/ref/official-sheet.*`。
+任何 `.ts` / `.css` / `.html`，`assets/sprites/**`，`assets/live2d-layers/**`，改 `尼古喵喵角色图/**`。
 
 ### 生成流程（必须按此，不要跳成滤镜）
 
-1. **读参考** 优先 `assets/ref/official-sheet.png`，否则 `official-sheet.webp`。按辨识点写死提示词（中英均可，但要写清 mole under left eye、oversized cream tee、baggy slate pants、olive clogs、sage messy pixie hair、cat ears same color as hair、lazy half-lidded eyes、thin dark tail）。明确：`pixel art`、`limited palette`、`no anti-aliasing`、`chibi about 4 heads tall`、`full body T-pose-ish idle`、`transparent background`、`sprite for desktop pet`。
+1. **读参考** 优先 `尼古喵喵角色图/nico_miaomiao_transparent.png`，否则 `尼古喵喵角色图/50.webp`。按辨识点写死提示词（中英均可，但要写清 mole under left eye、oversized cream tee、baggy slate pants、olive clogs、sage messy pixie hair、cat ears same color as hair、lazy half-lidded eyes、thin dark tail）。明确：`pixel art`、`limited palette`、`no anti-aliasing`、`chibi about 4 heads tall`、`full body T-pose-ish idle`、`transparent background`、`sprite for desktop pet`。
 2. **出 2–4 张候选**。优先顺序：
    - 云端/Cursor 可用的图像生成工具，并把设定图当作参考图（img2img / reference）；
    - Secrets 里的图像 API（OpenAI Images、同类）；
@@ -190,7 +190,7 @@ API/工具都不可用：在 PR 说明里写清缺什么密钥，**不要**用�
 
 ```
 你是 P-Gen。按 docs/agent-split.md 第 3 节：用图像生成模型做出像素风猫耳少女，再切成 240×336 对齐分层。
-参考图：优先 assets/ref/official-sheet.png，否则 official-sheet.webp。禁止把该图直接缩小/抖动当成成品。
+参考图：优先 尼古喵喵角色图/nico_miaomiao_transparent.png，否则 尼古喵喵角色图/50.webp。禁止把该图直接缩小/抖动当成成品。运行时交付仍是 assets/pixel/。
 交付 assets/pixel/preview.png、layers/*.png、sheet.json、_preview-stack.png、gen-log.md。
 提交标题：assets(pixel): AI-generated layered pixel puppet
 ```

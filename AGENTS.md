@@ -18,6 +18,6 @@
 
 - 只改 `docs/agent-split.md` 里你的代号「可写」路径，外加 `docs/project-tracker.md`。禁止列表碰了会和其他 Cloud Agent 的 PR 冲突。
 - 从任务指定的基线分支开 `agent/<id>`（或任务指定的 `cursor/…` 分支），做完开 PR，不要直接推默认分支。
-- 设定图真源：优先 `assets/ref/official-sheet.png`（去底），否则 `official-sheet.webp`。若缺失，不要用随便一只猫顶替。
+- 设定图真源：优先 `尼古喵喵角色图/nico_miaomiao_transparent.png`（去底），否则 `尼古喵喵角色图/50.webp`。运行时读 `assets/pixel/`。若缺失，不要用随便一只猫顶替。不要为了满足旧路径再拷一份到 `assets/ref/`。
 - 验证：`npx pnpm@9.15.0 --filter @niko/desktop build`（P-Puppet / S-Speech / R-Smoke）。P-Gen 验证看 `assets/pixel/_preview-stack.png`。
 - Electron 桌宠在无头云 VM 里不必 `pnpm dev`；能 build 即可。本机 GUI 验收记在推进板 W15-01，不要假装已经点过窗口。
