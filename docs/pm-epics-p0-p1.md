@@ -562,19 +562,31 @@ W3  PROACTIVE（等状态机 + 语音打断，避免叠播）
 
 ## 4. 并行矩阵（Cloud 一次最多开谁）
 
-同一时刻建议最多一组，避免抢文件：
+用户决定四条 P0 **都做**。不能「一个 Epic 一个 Agent 同时改桌面」：路 B（PR #14）已占 `character.ts` / `main/index.ts` / preload / character.html/css。
 
-| 批次 | 可并行 Story | 不要同时开 |
-|------|----------------|------------|
-| 现在（路 B 进行中） | ST-STATE-01、ST-VIZ-01、ST-PACK-01、ST-LLM-01、ST-AUDIT-01 | 任何 `character.ts` / `main/index.ts` |
-| B 合入后 | ST-STATE-02 ∥ ST-VOICE-01 ∥ ST-VIZ-02 ∥ ST-PACK-02 | STATE-03 与 VOICE-02 与 VIZ-03（都可能抢角色窗） |
-| Stream 窗口 | 只 W2-02 **或** 只碰 `main` 的语音接线 | W2-Shell、路 B 残留 |
-| Shell 窗口 | ST-SHELL-01/02 同一 Agent | Stream、PASS-01 拆开抢 `windows.ts` |
-| Shell 之后 | ST-PASS-01 然后 ST-PASS-02 | 与 VOICE-02 抢 `character.ts` |
-| W2 收尾 | ST-LLM-02（若只 core 则早做）、ST-AUDIT-02、W2-SFX、W2-Clone | Clone 要本机 9880 |
-| W3 | ST-PROACT-01 → 02 | — |
+### 第一批（现在就能并行，4 个 Agent）
 
-本机必须验收：ST-PASS-02、ST-SHELL-*、ST-VOICE-02/03、ST-VIZ-03、ST-PROACT-02。云端 `build` 不算桌面体验通过。
+| Agent | Story | 独占路径 |
+|-------|--------|----------|
+| P0-A | ST-STATE-01 | `packages/core/src/petPhase.ts`、`index.ts`（尽量不改 `types.ts` 大结构） |
+| P0-B | ST-STATE-02 | P-Puppet：`PixelRenderer.ts`、`pixelSheet.ts`（**不**碰 `character.ts`） |
+| P0-C | ST-VOICE-01 | `packages/voice/**`、`config.example.json`（**不**碰 `packages/core`、`apps/desktop`） |
+| P0-D | ST-VIZ-01 + ST-VIZ-02 | `packages/agent/**` 仅此 |
+
+四条都 **禁止** 改：`docs/agent-split.md`、`docs/project-tracker.md`（PR #12/#14 在改）、`character.ts`、`main/index.ts`、`windows.ts`、`smoke.ts`、`assets/pixel/**`。
+
+### 第二批（等第一批 + 路 B 合入）
+
+| 顺序 | Agent | Story | 并行？ |
+|------|--------|--------|--------|
+| 2a | P0-E | ST-STATE-03 + ST-VOICE-02 | 与 P0-F 并行 |
+| 2a | P0-F | ST-VOICE-03（只 `packages/voice`） | 与 P0-E 并行 |
+| 2b | P0-G | ST-VIZ-03 | **等 P0-E**（抢 `character.ts` / `main`） |
+| 2c | P0-H | ST-SHELL-01/02 + ST-PASS-01/02 | **等 P0-G**（抢 `main` / `character.ts` / 随后 `PixelRenderer` hitTest） |
+
+点击穿透依赖 hide 烟窗，所以 P0-H 把 P1 的 Shell 前置做进同一个 Agent，避免再拆一个抢 `windows.ts` 的人。
+
+本机必须验收：P0-E 打断、P0-G 忙碌脸、P0-H 穿透。云端 `build` 不算桌面通过。
 
 ---
 
@@ -585,3 +597,198 @@ W3  PROACTIVE（等状态机 + 语音打断，避免叠播）
 `2026-08-20 · PM Agent · 按 §6 P0/P1 生成 Epic/Story，见 docs/pm-epics-p0-p1.md；未改 agent-split 冻结契约`
 
 本拆解不修改 `docs/agent-split.md`。
+
+---
+
+## 6. 给各 Cloud Agent 的提示词（整段复制）
+
+每条开 **一条新的 Cloud 对话**，基线 `origin/master`，自己建分支，不要推 master，不要复用推进板对话，不要复用路 B 对话。
+
+### 6.1 第一批 · 现在并行（P0-A～D）
+
+#### P0-A · 状态机类型（ST-STATE-01）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠（github.com/octaviaus/Nico_yanineco）。
+基线：origin/master。新建分支，完成后开 PR，不要推 master。
+不要复用别人的文档分支或路 B 分支（cursor/close-idle-puff-opaque-ptt-5089）。
+
+你是 P0-A。只做 docs/pm-epics-p0-p1.md 的 ST-STATE-01（EPIC-W1-STATE-MACHINE）。参考 R06。
+
+任务：
+- 新建 packages/core/src/petPhase.ts：枚举 Idle / Listening / Thinking / Speaking / Inhale / Exhale。
+- 合法转移表；非法转移拒绝（throw 或返回错误，不要静默变成乱态）。
+- 每种 phase → 眼嘴组合写成 TS const，必须对齐 docs/agent-split.md §2：
+  Idle: 眼 open/half，嘴 closed；Listening/Thinking 先映射到 Idle 层组合；
+  Speaking: 嘴 open（走现有 setMouthOpen）；Inhale: 眼更眯/closed，嘴 closed；Exhale: 嘴 smoke 或 open。
+- 从 packages/core/src/index.ts 导出类型与转移函数。尽量少改 types.ts（不要大重构 AppConfig）。
+- 加最小单测或 node 脚本测非法转移。
+
+可写：packages/core/src/petPhase.ts、packages/core/src/index.ts、必要时 packages/core 的测试文件。
+禁止：apps/desktop/**、packages/voice/**、packages/agent/**、persona.ts 大改、assets/**、docs/agent-split.md、docs/project-tracker.md、config.json。
+不要改 CharacterRenderer 方法签名，不要改层名/240×336/sheet.json 字段名。
+
+验证：仓库能 typecheck/build 到的范围（至少 core 能被 desktop 引用编译）。提交标题：feat(core): pet phase state machine types
+做完即停。PR 说明写：ST-STATE-01；桌面接线是别人的 P0-E。
+```
+
+#### P0-B · PixelRenderer 按 pose 切层（ST-STATE-02）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：origin/master。新建分支，开 PR，不要推 master。不要复用路 B / 推进板分支。
+
+你是 P0-B。只做 ST-STATE-02（EPIC-W1-STATE-MACHINE）。代号 P-Puppet。参考 R06 与 docs/agent-split.md §2。
+
+任务：
+- 在 PixelRenderer / pixelSheet 把 idle/talk/inhale/exhale 的眼嘴切层写死对齐契约：
+  idle: 眼 open/half，嘴 closed；talk: setMouthOpen 切嘴；inhale: 眼更眯，嘴 closed；exhale: 嘴 smoke 或 open（sheet 若还没有 smoke slot，用 open，不要改 sheet.json 字段名）。
+- 眨眼仍 4–7s，仅 idle。
+- CharacterRenderer 方法签名不准改（仍是 setPose/setMouthOpen/setSmokeParam/getMouthWorld）。
+- 无 PNG 时色块占位仍能切眼嘴。
+
+可写：apps/desktop/src/renderer/lib/PixelRenderer.ts、pixelSheet.ts、CharacterRenderer.ts（只加注释或 pixel kind，不改方法签名）、createCharacterRenderer.ts 仅当接线必须。
+禁止：character.ts、character.html、character.css、main/index.ts、windows.ts、smoke.ts、packages/**、assets/pixel/**、docs/agent-split.md、docs/project-tracker.md。
+
+验证：npx pnpm@9.15.0 --filter @niko/desktop build
+提交标题：feat(desktop): pixel renderer pose-to-layer mapping
+做完即停。PR 写 ST-STATE-02。不要做 hitTest 点击穿透（那是 P0-H）。
+```
+
+#### P0-C · VAD（ST-VOICE-01）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：origin/master。新建分支，开 PR，不要推 master。
+
+你是 P0-C。只做 ST-VOICE-01（EPIC-W2-VOICE-PIPELINE）。代号 V-Timbre。参考 R04/R06。
+
+任务：
+- 在 packages/voice 增加可选 VAD：检测语音起/止，导出函数或事件（start/stop）。
+- 无模型/未配置时必须明确失败或返回 disabled，走旧路径；禁止把权重提交进 git。
+- config.example.json 可加可选 stt.vad 字段（默认关）。不要改用户 config.json。
+- 不要接 GPT-SoVITS。不要改桌面 PTT UI。
+
+可写：packages/voice/**、config.example.json。
+禁止：apps/desktop/**、packages/core/**（含 types.ts/chat.ts/persona.ts）、packages/agent/**、config.json、.env、模型权重、docs/agent-split.md、docs/project-tracker.md。
+
+验证：给 VAD 一个最小脚本或测试（静音 vs 有声，或 disabled 时的行为）。voice 包能编过。
+提交标题：feat(voice): optional VAD start/stop
+做完即停。PR 写 ST-VOICE-01；打断播放和流式 ASR 不是你的活。
+```
+
+#### P0-D · AgentPhase 映射 + CLI 解析（ST-VIZ-01、ST-VIZ-02）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：origin/master。新建分支，开 PR，不要推 master。
+
+你是 P0-D。做 ST-VIZ-01 + ST-VIZ-02（EPIC-W2-AGENT-VISUAL）。参考 R07 Clyde、R08 aemeath、R09 mikari、R01。
+
+任务：
+1) 在 packages/agent 定义 AgentPhase（session start / tool / permission / complete / error 等 8–15 种）。
+2) 映射表：phase → 现有 CharacterPose 或 idle + smoke intensity + 一句颓系短气泡（符合 docs/persona.md：短句、不卖萌）。同一 phase 最小展示 800ms 写进配置。
+3) 解析现有 Cursor CLI（packages/agent 里 spawn / --print）stdout/stderr 为 AgentPhase 序列；失败则保持 idle，不要抛崩。
+4) 用一段假日志 fixture 测解析。
+
+可写：packages/agent/**
+禁止：apps/desktop/**、packages/core/**、packages/voice/**、assets/**、docs/agent-split.md、docs/project-tracker.md。
+不要做角色窗换脸（ST-VIZ-03）、不要开 HTTP hook（ST-VIZ-04）、不要改 dispatch_cursor 的人设策略。
+
+验证：fixture 测试通过；桌面 build 不被你破坏（你不该改 desktop）。
+提交标题：feat(agent): agent phase mapping and CLI progress parse
+做完即停。
+```
+
+### 6.2 第二批 · 等第一批和路 B（PR #14）合入后再开
+
+打开前确认：master 已含路 B，以及 P0-A/B/C/D 的 PR（至少 A/B/D；C 可稍后）。基线用最新 origin/master。
+
+#### P0-E · 状态接线 + 打断 TTS（ST-STATE-03 + ST-VOICE-02）
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：最新 origin/master（必须已含路 B 关闭按钮/opaque PTT，以及 core petPhase、PixelRenderer 映射）。没有这些就停，在 PR 说明写缺什么，不要自己重做 P0-A/B。
+
+你是 P0-E。同一 PR 做 ST-STATE-03 + ST-VOICE-02。代号 S-Speech。参考 R05/R06。
+
+任务：
+- PTT / 播放 / 工具 busy 写入 PetPhase，减少散落 boolean 作为唯一真源。
+- 状态变化可日志追踪。
+- 新 utterance：stop 当前播放、清空句队列、口型不要残留；与现有 speakGen/interrupt 对齐，不要两套队列。
+- preload/env.d.ts 只加字段。保留音频 base64 回退。
+- 热键 Ctrl+Shift+M、路 B 的 × 退出、opaque-only PTT 不要回退。
+
+可写：apps/desktop/src/renderer/character.ts、apps/desktop/src/main/index.ts（speak/handleUtterance/phase 广播）、preload/index.ts、env.d.ts（只加字段）。
+禁止：packages/voice/**、windows.ts、smoke.ts、PixelRenderer、geometry.ts、流式 LLM、hide 烟窗、点击穿透、assets/pixel、docs/agent-split.md。
+推进板若存在只加一行 changelog（不要整篇重写）。
+
+验证：npx pnpm@9.15.0 --filter @niko/desktop build
+提交标题：feat(desktop): pet phase wiring and barge-in TTS
+PR 写明本机还需：连说两句能打断；phase 日志。做完即停。
+```
+
+#### P0-F · 流式/分段 ASR（ST-VOICE-03）可与 P0-E 同时开
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：最新 origin/master（最好已含 P0-C VAD）。新建分支，开 PR，不要推 master。
+
+你是 P0-F。只做 ST-VOICE-03 的 packages/voice 部分。参考 R04/R05。
+
+任务：
+- 分段 Whisper 或对接本地 faster-whisper HTTP（已有 local STT 基线）。
+- 未配置时回退现有 STT；不要提交模型权重。
+- 本 PR 不要改 apps/desktop（桌面接 VAD/流式是 P0-E 之后的增量；你只提供 voice API）。
+
+可写：packages/voice/**、config.example.json。
+禁止：apps/desktop/**、packages/core/**、packages/agent/**、config.json、权重、docs/agent-split.md。
+
+验证：voice 包能编过；README 或 config.example 写清如何指向本地 whisper。
+提交标题：feat(voice): optional segmented/streaming ASR
+做完即停。
+```
+
+#### P0-G · 角色窗消费 AgentPhase（ST-VIZ-03）等 P0-E
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：最新 origin/master（必须已含 P0-D 映射解析 + P0-E phase 接线）。缺一就停。
+
+你是 P0-G。只做 ST-VIZ-03。参考 R07/R08/R09。
+
+任务：
+- 把 packages/agent 的 AgentPhase 转到角色窗：忙碌/打字、权限提醒、完成短暂庆祝或 puff → Idle。
+- 遵守映射表 800ms 最小展示，防闪烁。
+- 气泡短句符合 docs/persona.md（颓、短、不卖萌）。
+- 不要做 HTTP hook（ST-VIZ-04）。不要 hide 烟窗、不要穿透。
+
+可写：character.ts、main/index.ts 仅转发 agent 事件、preload/env 只加字段。
+禁止：packages/voice/**、windows.ts、PixelRenderer 契约、assets/pixel、docs/agent-split.md。
+
+验证：npx pnpm@9.15.0 --filter @niko/desktop build；可用 fixture/假事件。PR 写本机：dispatch_cursor 时能看到忙碌脸。
+提交标题：feat(desktop): show agent phase on pixel pet
+做完即停。
+```
+
+#### P0-H · hide 烟窗 + 点击穿透（ST-SHELL + ST-PASS）等 P0-G
+
+```
+你是 Cursor 云端 Agent。仓库是尼古喵喵桌宠。
+基线：最新 origin/master（必须已含路 B、P0-B PixelRenderer、P0-E；且没有别人正在改 main/index.ts 或 windows.ts 的未合入 PR）。缺一就停。
+
+你是 P0-H。同一 Agent 按顺序做完，禁止再拆给别人：
+1) ST-SHELL-01 hide 全屏烟窗（无烟时 hide，托盘吐一口再 show+burst）
+2) ST-SHELL-02 托盘隐藏角色时停 Pixi Ticker + hide 烟窗，显示则恢复
+3) ST-PASS-01 角色窗 setIgnoreMouseEvents(true, { forward: true }) IPC 开关
+4) ST-PASS-02 非透明像素/气泡/输入框/关闭按钮关闭穿透；透明区点到下层窗口。这不是「只禁止 PTT」。不要做 Shimeji 爬墙。
+注意 Pixi devicePixelRatio。路 B 的 opaque PTT 保持。
+
+可写：windows.ts、smoke.ts、SmokeField.ts、smoke.html、main/index.ts（hide/穿透 IPC）、character.ts（hit 采样）、PixelRenderer.ts 仅加 hitTest、preload/env 只加字段。
+禁止：packages/**、assets/pixel 层名/尺寸、geometry 画布契约、流式 LLM、docs/agent-split.md。不要和别人对开 W2-Stream。
+
+验证：npx pnpm@9.15.0 --filter @niko/desktop build
+提交标题：feat(desktop): hide smoke overlay and click-through hitbox
+PR 必须写：云 VM 不能测穿透，本机验收透明区点到 IDE、点猫仍可拖/说话、隐藏后 CPU 下降。
+做完即停。
+```
