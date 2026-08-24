@@ -32,7 +32,7 @@ $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
 - **拖动**：按住角色空白处拖。
 - **说话**：按住角色，或按住 `Ctrl+Shift+M`，松手发送。也可以在底下输入框打字。
 - **托盘**：吐一口 / 散烟 / 显示隐藏 / 退出。
-- **编码任务**：跟它说「用 Cursor 帮我……」，它会调用本机 Cursor CLI。
+- **编码任务**：跟它说「用 Cursor 帮我……」，它会调用本机 **Cursor Agent CLI**（命令是 `agent`）。这和 Cursor 编辑器不是同一个东西；只装了编辑器会派活失败。
 
 ## 云端 / 本地
 
@@ -52,7 +52,14 @@ $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
 
 ## Cursor 桥
 
-第一版用 CLI：`agent -p "任务" --print`，或 `cursor <路径>`。需要本机已安装并 `agent login`。
+第一版用独立的 **Cursor Agent CLI**（命令 `agent`），不是编辑器里的 `cursor.exe`：
+
+```powershell
+irm 'https://cursor.com/install?win32=true' | iex
+agent login
+```
+
+派活时跑 `agent -p "任务" --print`。`config.json` 的 `cursor.cli` 保持 `agent` 即可。`cursor <路径>` 仍用于「在编辑器里打开」。
 
 下一步可改成 ACP：`agent acp` + JSON-RPC 流式会话，让喵喵一边抽烟一边播报工具调用。
 

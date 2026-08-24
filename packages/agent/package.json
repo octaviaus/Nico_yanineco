@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test test/parseCursorProgress.test.ts"
+    "test": "node --experimental-strip-types --test test/parseCursorProgress.test.ts test/resolveCursorCli.test.ts"
   },
   "dependencies": {
     "@niko/core": "workspace:*"
