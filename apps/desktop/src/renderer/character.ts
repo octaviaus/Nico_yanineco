@@ -3,6 +3,7 @@ import { createCharacterRenderer } from './lib/createCharacterRenderer'
 import { SmokeField, makeCloudTexture } from './lib/SmokeField'
 import type { CharacterRenderer } from './lib/CharacterRenderer'
 import { petPhaseToPose, type CharacterPose, type PetPhase } from '@niko/core'
+import { PHASE_MIN_DISPLAY_MS } from '../../../../packages/agent/src/agentPhase'
 import { CHARACTER_STAGE_HEIGHT, CHARACTER_STAGE_WIDTH } from '../shared/geometry'
 
 const stageEl = document.getElementById('stage')!
@@ -46,6 +47,21 @@ let sttProvider: string = 'webspeech'
 let mouthSmoke: SmokeField | undefined
 let currentPose: CharacterPose = 'idle'
 let currentPhase: PetPhase = 'Idle'
+let lastSubtitle = ''
+type AgentPhasePayload = {
+  phase: string
+  pose: CharacterPose
+  smokeIntensity: number
+  bubble: string
+  minDisplayMs: number
+  detail?: string
+}
+const AGENT_STICKY_PHASES = new Set(['permission', 'complete', 'error', 'cancelled', 'timeout'])
+const AGENT_DONE_PHASES = new Set(['idle', 'complete', 'error', 'cancelled', 'timeout'])
+let agentView: AgentPhasePayload | null = null
+let agentShownAt = 0
+let agentPending: AgentPhasePayload | null = null
+let agentHoldTimer = 0
 const clipQueue: AudioClip[] = []
 let queuePlaying = false
 let expectMore = false
@@ -60,6 +76,114 @@ let analyser: AnalyserNode | null = null
 let mediaSource: MediaElementAudioSourceNode | null = null
 let mouthRaf = 0
 const timeDomain = new Uint8Array(1024)
+
+function agentHoldMs(payload: AgentPhasePayload): number {
+  const ms = payload.minDisplayMs
+  return Number.isFinite(ms) && ms > 0 ? Math.max(PHASE_MIN_DISPLAY_MS, ms) : PHASE_MIN_DISPLAY_MS
+}
+
+function applyPetPhaseLook() {
+  const pose = petPhaseToPose(currentPhase)
+  currentPose = pose
+  renderer?.setPose(pose)
+  talking = currentPhase === 'Speaking' || queuePlaying
+  if (currentPhase !== 'Speaking') {
+    stopMouthRms()
+    renderer?.setMouthOpen(0)
+  }
+  renderer?.setSmokeParam(currentPhase === 'Exhale' ? 0.85 : 0.2)
+}
+
+function showAgentBubble(text: string) {
+  if (currentPhase === 'Speaking' && lastSubtitle) {
+    bubble.hidden = !lastSubtitle
+    bubble.textContent = lastSubtitle
+    return
+  }
+  bubble.hidden = !text
+  bubble.textContent = text
+}
+
+function applyAgentVisual(payload: AgentPhasePayload) {
+  agentView = payload
+  agentShownAt = Date.now()
+  currentPose = payload.pose
+  renderer?.setPose(payload.pose)
+  talking = payload.pose === 'talk' || queuePlaying
+  if (!queuePlaying) {
+    renderer?.setMouthOpen(payload.pose === 'talk' ? 0.7 : payload.pose === 'exhale' ? 0.4 : 0)
+  }
+  renderer?.setSmokeParam(payload.pose === 'exhale' ? 0.85 : payload.smokeIntensity)
+  mouthSmoke?.setIntensity(payload.smokeIntensity)
+  if (payload.phase === 'complete' || payload.pose === 'exhale') {
+    const m = renderer?.getMouthWorld()
+    if (m) mouthSmoke?.burst(m.x, m.y, 16)
+  }
+  showAgentBubble(payload.bubble)
+}
+
+function clearAgentOverlay() {
+  agentView = null
+  agentPending = null
+  if (agentHoldTimer) {
+    window.clearTimeout(agentHoldTimer)
+    agentHoldTimer = 0
+  }
+  applyPetPhaseLook()
+  if (currentPhase === 'Speaking' && lastSubtitle) {
+    bubble.hidden = !lastSubtitle
+    bubble.textContent = lastSubtitle
+    return
+  }
+  if (!lastSubtitle) {
+    bubble.hidden = true
+    bubble.textContent = ''
+  }
+}
+
+function cancelAgentOverlay() {
+  agentPending = null
+  clearAgentOverlay()
+}
+
+function scheduleAgentHold(ms: number) {
+  if (agentHoldTimer) window.clearTimeout(agentHoldTimer)
+  agentHoldTimer = window.setTimeout(() => {
+    agentHoldTimer = 0
+    if (agentPending) {
+      const next = agentPending
+      agentPending = null
+      applyAgentVisual(next)
+      scheduleAgentHold(agentHoldMs(next))
+      return
+    }
+    if (agentView && AGENT_DONE_PHASES.has(agentView.phase)) {
+      clearAgentOverlay()
+    }
+  }, ms)
+}
+
+function pushAgentPhase(payload: AgentPhasePayload) {
+  if (!payload || !payload.pose) return
+  if (!agentView) {
+    applyAgentVisual(payload)
+    scheduleAgentHold(agentHoldMs(payload))
+    return
+  }
+  const elapsed = Date.now() - agentShownAt
+  const min = agentHoldMs(agentView)
+  if (elapsed >= min) {
+    applyAgentVisual(payload)
+    scheduleAgentHold(agentHoldMs(payload))
+    return
+  }
+  const stickyIncoming = AGENT_STICKY_PHASES.has(payload.phase)
+  const stickyPending = agentPending ? AGENT_STICKY_PHASES.has(agentPending.phase) : false
+  if (stickyIncoming || !stickyPending) {
+    agentPending = payload
+  }
+  scheduleAgentHold(min - elapsed)
+}
 
 async function boot() {
   const cfg = await window.niko.getConfig()
@@ -80,18 +204,15 @@ async function boot() {
 
 window.niko.onPhase((phase) => {
   currentPhase = phase
-  const pose = petPhaseToPose(phase)
-  currentPose = pose
-  renderer?.setPose(pose)
-  talking = phase === 'Speaking' || queuePlaying
-  if (phase !== 'Speaking') {
-    stopMouthRms()
-    renderer?.setMouthOpen(0)
+  if (phase === 'Inhale' || phase === 'Listening') {
+    cancelAgentOverlay()
   }
-  renderer?.setSmokeParam(phase === 'Exhale' ? 0.85 : 0.2)
+  if (agentView) return
+  applyPetPhaseLook()
 })
 
 window.niko.onPose((pose) => {
+  if (agentView) return
   currentPose = pose
   renderer?.setPose(pose)
   talking = pose === 'talk' || queuePlaying
@@ -101,7 +222,13 @@ window.niko.onPose((pose) => {
   renderer?.setSmokeParam(pose === 'exhale' ? 0.85 : 0.2)
 })
 
+window.niko.onAgentPhase((payload) => {
+  pushAgentPhase(payload)
+})
+
 window.niko.onSubtitle((text) => {
+  lastSubtitle = text
+  if (agentView && currentPhase !== 'Speaking') return
   bubble.hidden = !text
   bubble.textContent = text
 })

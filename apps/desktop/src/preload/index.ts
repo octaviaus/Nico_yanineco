@@ -2,6 +2,15 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { readFileSync } from 'node:fs'
 import type { CharacterPose, PetPhase } from '@niko/core'
 
+export type AgentPhasePayload = {
+  phase: string
+  pose: CharacterPose
+  smokeIntensity: number
+  bubble: string
+  minDisplayMs: number
+  detail?: string
+}
+
 export type RendererConfig = {
   sttProvider: 'openai' | 'local' | 'webspeech'
   idlePuffSeconds: number
@@ -45,6 +54,9 @@ const niko = {
   },
   onPhase: (cb: (phase: PetPhase) => void) => {
     ipcRenderer.on('niko:phase', (_e, phase: PetPhase) => cb(phase))
+  },
+  onAgentPhase: (cb: (payload: AgentPhasePayload) => void) => {
+    ipcRenderer.on('niko:agent-phase', (_e, payload: AgentPhasePayload) => cb(payload))
   },
   onSmoke: (cb: (cmd: { intensity: number; burst: boolean; clear: boolean }) => void) => {
     ipcRenderer.on('niko:smoke', (_e, cmd) => cb(cmd))

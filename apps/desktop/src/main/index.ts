@@ -11,7 +11,12 @@ import {
   type AppConfig,
   type PetPhase
 } from '@niko/core'
-import { AGENT_TOOLS, executeTool } from '@niko/agent'
+import {
+  AGENT_TOOLS,
+  executeTool,
+  getAgentPhaseVisual,
+  type AgentPhaseEvent
+} from '@niko/agent'
 import { synthesizeSpeech, transcribeAudio } from '@niko/voice'
 import { loadConfig, resolveConfigPath } from './config'
 import { assetsDir, repoRoot } from './paths'
@@ -73,9 +78,23 @@ function applySmoke(cmd: { intensity?: number; burst?: boolean; clear?: boolean 
   })
 }
 
+function sendAgentPhase(event: AgentPhaseEvent) {
+  const visual = getAgentPhaseVisual(event.phase)
+  console.log(`[agent-phase] ${event.phase}`)
+  windows.character.webContents.send('niko:agent-phase', {
+    phase: event.phase,
+    pose: visual.pose,
+    smokeIntensity: visual.smokeIntensity,
+    bubble: visual.bubble,
+    minDisplayMs: visual.minDisplayMs,
+    detail: event.detail
+  })
+}
+
 function rebuildChat() {
-  chat = new NikoChat(config, AGENT_TOOLS, async (name, args) =>
-    executeTool(name, args, {
+  chat = new NikoChat(config, AGENT_TOOLS, async (name, args) => {
+    const turn = turnGen
+    return executeTool(name, args, {
       config,
       setSmoke: applySmoke,
       openPath: async (p) => {
@@ -93,9 +112,13 @@ function rebuildChat() {
           message
         })
         return res.response === 0
+      },
+      onAgentPhase: (event) => {
+        if (turn !== turnGen) return
+        sendAgentPhase(event)
       }
     })
-  )
+  })
 }
 
 function splitSentences(text: string): string[] {

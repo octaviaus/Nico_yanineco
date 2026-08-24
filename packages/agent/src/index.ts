@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import type { AppConfig, ToolDef } from '@niko/core'
 import { createCursorProgressParser, extractCursorResultText } from './parseCursorProgress.js'
 import type { AgentPhaseEvent } from './parseCursorProgress.js'
+import { MISSING_CURSOR_AGENT_CLI, buildCursorAgentArgs, resolveCursorAgentCli } from './resolveCursorCli.js'
 
 export type { AgentPhase, AgentPhaseVisual } from './agentPhase.js'
 export {
@@ -17,6 +19,7 @@ export {
   createCursorProgressParser,
   extractCursorResultText
 } from './parseCursorProgress.js'
+export { MISSING_CURSOR_AGENT_CLI, buildCursorAgentArgs, isEditorCursorLauncher, resolveCursorAgentCli } from './resolveCursorCli.js'
 
 export const AGENT_TOOLS: ToolDef[] = [
   {
@@ -61,7 +64,7 @@ export const AGENT_TOOLS: ToolDef[] = [
     function: {
       name: 'dispatch_cursor',
       description:
-        '把编码/改仓库任务交给本机 Cursor CLI 执行。用户要写代码、修 bug、改项目时用这个，不要自己编补丁。',
+        '把任务交给本机 Cursor Agent CLI。用户说「用 Cursor」「让 Cursor」看文件/读 README/改仓库/写代码时必须调用这个。不要自己编补丁或文件内容，不要用 open_in_cursor 代替。',
       parameters: {
         type: 'object',
         properties: {
@@ -94,6 +97,7 @@ export type AgentHost = {
   openPath: (p: string) => Promise<string>
   readClipboard: () => string
   confirm: (message: string) => Promise<boolean>
+  onAgentPhase?: (event: AgentPhaseEvent) => void
 }
 
 export async function executeTool(
@@ -129,7 +133,9 @@ export async function executeTool(
       const workspace = str(args.workspace) || host.config.cursor.workspace || process.cwd()
       const ok = await host.confirm(`把这活扔给 Cursor？\n${prompt.slice(0, 200)}`)
       if (!ok) return '用户取消了，那就算了。'
-      return runCursorAgent(host.config.cursor.cli || 'agent', prompt, workspace)
+      return runCursorAgent(host.config.cursor.cli || 'agent', prompt, workspace, {
+        onPhase: host.onAgentPhase
+      })
     }
     case 'open_in_cursor': {
       const p = str(args.path)
@@ -218,10 +224,23 @@ export async function runCursorAgent(
   workspace: string,
   options?: RunCursorAgentOptions
 ): Promise<string> {
+  const resolved = resolveCursorAgentCli(cli)
+  if (!resolved) {
+    emitPhase(options?.onPhase, {
+      phase: 'error',
+      detail: MISSING_CURSOR_AGENT_CLI.slice(0, 120),
+      source: 'process'
+    })
+    return `Cursor 没接住：${MISSING_CURSOR_AGENT_CLI}`
+  }
+  if (!existsSync(workspace)) {
+    const msg = `工作区不存在：${workspace}`
+    emitPhase(options?.onPhase, { phase: 'error', detail: msg, source: 'process' })
+    return `Cursor 没接住：${msg}`
+  }
+
   const attempts: Array<{ cmd: string; args: string[] }> = [
-    { cmd: cli, args: ['-p', prompt, '--print'] },
-    { cmd: 'agent', args: ['-p', prompt, '--print'] },
-    { cmd: 'cursor', args: ['agent', '-p', prompt, '--print'] }
+    { cmd: resolved, args: buildCursorAgentArgs(prompt, workspace) }
   ]
   const seen = new Set<string>()
   let lastErr = ''

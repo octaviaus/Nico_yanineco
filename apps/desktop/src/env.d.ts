@@ -12,6 +12,14 @@ interface NikoApi {
   drag: (dx: number, dy: number) => void
   onPose: (cb: (pose: import('@niko/core').CharacterPose) => void) => void
   onPhase: (cb: (phase: import('@niko/core').PetPhase) => void) => void
+  onAgentPhase: (cb: (payload: {
+    phase: string
+    pose: import('@niko/core').CharacterPose
+    smokeIntensity: number
+    bubble: string
+    minDisplayMs: number
+    detail?: string
+  }) => void) => void
   onSmoke: (cb: (cmd: { intensity: number; burst: boolean; clear: boolean }) => void) => void
   onSubtitle: (cb: (text: string) => void) => void
   onStatus: (cb: (text: string) => void) => void
