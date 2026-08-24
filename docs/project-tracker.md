@@ -80,7 +80,7 @@
 | P0 第一批 | **完成**：#15 A · #16 B · #17 C · #18 D 已在 `master` |
 | PetDex 旁路 | **完成** · PR #19 `petdex/`（桌宠运行时不读） |
 | Wave 1.5 路 B | **完成** · PR #14 `2a16e25`。W15-02/04 本机过；W15-03 空闲嘴烟用户接受 |
-| Wave 2 / P0 第二批 | P0-E **完成** · PR #23；P0-F **完成** · PR #24（只 voice）。可派 P0-G；H 等 G |
+| Wave 2 / P0 第二批 | P0-E **完成** · PR #23；P0-F **完成** · PR #24；P0-G **完成** · PR #25 本机过。可派 P0-H |
 | 下一 REQ | `REQ-003` |
 | 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
@@ -88,19 +88,19 @@
 
 ### 开放 PR / 远程分支
 
-无开放产品 PR。P0-E `cursor/pet-phase-wiring-barge-in-1098`、P0-F `cursor/voice-streaming-asr-a62d` 合入后可删远程。
+无开放产品 PR。P0-E/F/G 功能分支合入后可删远程。
 
-`character.ts` / `main/index.ts` 已释放（P0-E 合入）。不要再派第二套 P0-A～D、第二条路 B、或第二套 P0-E。
+`character.ts` / `main/index.ts` 已释放（P0-G 合入）。可派 P0-H。不要再派第二套 P0-A～G、路 B。
 
 ---
 
 ## 2. 进行中需求
 
-P0-G `in_progress`（ST-VIZ-03，占 `character.ts` / `main` 转发）。P0-E、P0-F 已合入。
+无进行中产品需求。P0-E、P0-F、P0-G 已合入。
 
-**现在在做：** P0-G。不要重开 P0-E / P0-F。
-**先别派：** P0-H（等 G）、W2-Stream / Clone / SFX。
-不要为 W15-03 去改 `SmokeField`。不要再派 A～D、路 B、或第二套 P0-E。
+**现在可派：** P0-H（ST-SHELL + ST-PASS，占 `windows.ts` / `smoke.ts` / `main` / `character.ts`）。不要重开 P0-G。
+**先别派：** W2-Stream / Clone / SFX（Stream 与 H/Shell 串行）。
+不要为 W15-03 去改 `SmokeField`。不要再派 A～D、路 B、或第二套 P0-E/F/G。
 
 ---
 
@@ -144,7 +144,7 @@ P0-G `in_progress`（ST-VIZ-03，占 `character.ts` / `main` 转发）。P0-E、
 | P0-D | ST-VIZ-01/02 AgentPhase + CLI 解析 | #18 `9afb386` | `done` |
 | 旁路 | PetDex/Codex 包 `petdex/` | #19 `b8a83da` | `done`（非桌宠运行时） |
 
-桌面接线：P0-E **已合入**；P0-F **已合入**（只 voice，桌面分段 ASR 仍未接线）；P0-G 可派；P0-H 等 G。
+桌面接线：P0-E **已合入**；P0-F **已合入**（只 voice，桌面分段 ASR 仍未接线）；P0-G **已合入**；P0-H 可派。
 
 ### P0 第二批（桌面接线，尚未开工）
 
@@ -152,8 +152,8 @@ P0-G `in_progress`（ST-VIZ-03，占 `character.ts` / `main` 转发）。P0-E、
 |-------|--------|------|------|------|
 | P0-E | ST-STATE-03 + ST-VOICE-02 | 已合入 | `character.ts`、`main/index.ts` | `done` · PR #23 · 本机过 |
 | P0-F | ST-VOICE-03 | 已合入 | `packages/voice/**` | `done` · PR #24 |
-| P0-G | ST-VIZ-03 | **现在** | `character.ts`、`main` 转发 | `in_progress` · cloud · `cursor/show-agent-phase-pixel-pet` |
-| P0-H | Shell hide + 点击穿透 | 等 G 合入 | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `blocked` |
+| P0-G | ST-VIZ-03 | 已合入 | `character.ts`、`main` 转发 | `done` · PR #25 · 本机过 |
+| P0-H | Shell hide + 点击穿透 | **可派**（G 已合入） | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `planned` |
 
 ---
 
@@ -402,6 +402,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-25 | P0-G | **合入 PR #25**。ST-VIZ-03 角色窗消费 AgentPhase → `done`。本机：`dispatch_cursor` 有忙碌脸，`complete` 后说话。`character.ts`/`main` 释放；可派 P0-H | 用户指示合入 |
 | 2026-08-25 | P0-G | 认领 ST-VIZ-03（角色窗消费 AgentPhase）· `cursor/show-agent-phase-pixel-pet` | cloud |
 | 2026-08-20 | P0-F | **合入 PR #24**。ST-VOICE-03（packages/voice 分段/流式 ASR）→ `done`。桌面接线仍未做 | 用户指示合入 |
 | 2026-08-20 | P0-E | **合入 PR #23**。ST-STATE-03 + ST-VOICE-02 → `done`。本机打断过。`character.ts`/`main` 释放；可派 P0-G | 用户指示合入 |

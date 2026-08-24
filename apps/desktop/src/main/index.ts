@@ -15,8 +15,6 @@ import {
   AGENT_TOOLS,
   executeTool,
   getAgentPhaseVisual,
-  runCursorAgent,
-  type AgentHost,
   type AgentPhaseEvent
 } from '@niko/agent'
 import { synthesizeSpeech, transcribeAudio } from '@niko/voice'
@@ -93,51 +91,33 @@ function sendAgentPhase(event: AgentPhaseEvent) {
   })
 }
 
-async function dispatchCursorWithPhase(
-  args: Record<string, unknown>,
-  host: AgentHost
-): Promise<string> {
-  const prompt = typeof args.prompt === 'string' ? args.prompt.trim() : ''
-  if (!prompt) return '没说要 Cursor 干什么。'
-  const workspace =
-    (typeof args.workspace === 'string' && args.workspace.trim()) ||
-    host.config.cursor.workspace ||
-    process.cwd()
-  const ok = await host.confirm(`把这活扔给 Cursor？\n${prompt.slice(0, 200)}`)
-  if (!ok) return '用户取消了，那就算了。'
-  const turn = turnGen
-  return runCursorAgent(host.config.cursor.cli || 'agent', prompt, workspace, {
-    onPhase: (event) => {
-      if (turn !== turnGen) return
-      sendAgentPhase(event)
-    }
-  })
-}
-
 function rebuildChat() {
-  const host: AgentHost = {
-    config,
-    setSmoke: applySmoke,
-    openPath: async (p) => {
-      const err = await shell.openPath(p)
-      return err ? `打不开：${err}` : `打开了 ${p}`
-    },
-    readClipboard: () => clipboard.readText(),
-    confirm: async (message) => {
-      const res = await dialog.showMessageBox(windows.character, {
-        type: 'question',
-        buttons: ['行吧', '算了'],
-        defaultId: 0,
-        cancelId: 1,
-        title: '尼古喵喵',
-        message
-      })
-      return res.response === 0
-    }
-  }
   chat = new NikoChat(config, AGENT_TOOLS, async (name, args) => {
-    if (name === 'dispatch_cursor') return dispatchCursorWithPhase(args, host)
-    return executeTool(name, args, host)
+    const turn = turnGen
+    return executeTool(name, args, {
+      config,
+      setSmoke: applySmoke,
+      openPath: async (p) => {
+        const err = await shell.openPath(p)
+        return err ? `打不开：${err}` : `打开了 ${p}`
+      },
+      readClipboard: () => clipboard.readText(),
+      confirm: async (message) => {
+        const res = await dialog.showMessageBox(windows.character, {
+          type: 'question',
+          buttons: ['行吧', '算了'],
+          defaultId: 0,
+          cancelId: 1,
+          title: '尼古喵喵',
+          message
+        })
+        return res.response === 0
+      },
+      onAgentPhase: (event) => {
+        if (turn !== turnGen) return
+        sendAgentPhase(event)
+      }
+    })
   })
 }
 
