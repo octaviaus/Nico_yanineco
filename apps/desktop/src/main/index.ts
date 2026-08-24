@@ -11,7 +11,14 @@ import {
   type AppConfig,
   type PetPhase
 } from '@niko/core'
-import { AGENT_TOOLS, executeTool } from '@niko/agent'
+import {
+  AGENT_TOOLS,
+  executeTool,
+  getAgentPhaseVisual,
+  runCursorAgent,
+  type AgentHost,
+  type AgentPhaseEvent
+} from '@niko/agent'
 import { synthesizeSpeech, transcribeAudio } from '@niko/voice'
 import { loadConfig, resolveConfigPath } from './config'
 import { assetsDir, repoRoot } from './paths'
@@ -73,29 +80,65 @@ function applySmoke(cmd: { intensity?: number; burst?: boolean; clear?: boolean 
   })
 }
 
+function sendAgentPhase(event: AgentPhaseEvent) {
+  const visual = getAgentPhaseVisual(event.phase)
+  console.log(`[agent-phase] ${event.phase}`)
+  windows.character.webContents.send('niko:agent-phase', {
+    phase: event.phase,
+    pose: visual.pose,
+    smokeIntensity: visual.smokeIntensity,
+    bubble: visual.bubble,
+    minDisplayMs: visual.minDisplayMs,
+    detail: event.detail
+  })
+}
+
+async function dispatchCursorWithPhase(
+  args: Record<string, unknown>,
+  host: AgentHost
+): Promise<string> {
+  const prompt = typeof args.prompt === 'string' ? args.prompt.trim() : ''
+  if (!prompt) return '没说要 Cursor 干什么。'
+  const workspace =
+    (typeof args.workspace === 'string' && args.workspace.trim()) ||
+    host.config.cursor.workspace ||
+    process.cwd()
+  const ok = await host.confirm(`把这活扔给 Cursor？\n${prompt.slice(0, 200)}`)
+  if (!ok) return '用户取消了，那就算了。'
+  const turn = turnGen
+  return runCursorAgent(host.config.cursor.cli || 'agent', prompt, workspace, {
+    onPhase: (event) => {
+      if (turn !== turnGen) return
+      sendAgentPhase(event)
+    }
+  })
+}
+
 function rebuildChat() {
-  chat = new NikoChat(config, AGENT_TOOLS, async (name, args) =>
-    executeTool(name, args, {
-      config,
-      setSmoke: applySmoke,
-      openPath: async (p) => {
-        const err = await shell.openPath(p)
-        return err ? `打不开：${err}` : `打开了 ${p}`
-      },
-      readClipboard: () => clipboard.readText(),
-      confirm: async (message) => {
-        const res = await dialog.showMessageBox(windows.character, {
-          type: 'question',
-          buttons: ['行吧', '算了'],
-          defaultId: 0,
-          cancelId: 1,
-          title: '尼古喵喵',
-          message
-        })
-        return res.response === 0
-      }
-    })
-  )
+  const host: AgentHost = {
+    config,
+    setSmoke: applySmoke,
+    openPath: async (p) => {
+      const err = await shell.openPath(p)
+      return err ? `打不开：${err}` : `打开了 ${p}`
+    },
+    readClipboard: () => clipboard.readText(),
+    confirm: async (message) => {
+      const res = await dialog.showMessageBox(windows.character, {
+        type: 'question',
+        buttons: ['行吧', '算了'],
+        defaultId: 0,
+        cancelId: 1,
+        title: '尼古喵喵',
+        message
+      })
+      return res.response === 0
+    }
+  }
+  chat = new NikoChat(config, AGENT_TOOLS, async (name, args) => {
+    if (name === 'dispatch_cursor') return dispatchCursorWithPhase(args, host)
+    return executeTool(name, args, host)
+  })
 }
 
 function splitSentences(text: string): string[] {

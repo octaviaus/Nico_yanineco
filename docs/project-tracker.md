@@ -96,9 +96,9 @@
 
 ## 2. 进行中需求
 
-无进行中产品需求。P0-E、P0-F 已合入。
+P0-G `in_progress`（ST-VIZ-03，占 `character.ts` / `main` 转发）。P0-E、P0-F 已合入。
 
-**现在可派：** P0-G（ST-VIZ-03，占 `character.ts` / `main`）。不要重开 P0-F。
+**现在在做：** P0-G。不要重开 P0-E / P0-F。
 **先别派：** P0-H（等 G）、W2-Stream / Clone / SFX。
 不要为 W15-03 去改 `SmokeField`。不要再派 A～D、路 B、或第二套 P0-E。
 
@@ -152,7 +152,7 @@
 |-------|--------|------|------|------|
 | P0-E | ST-STATE-03 + ST-VOICE-02 | 已合入 | `character.ts`、`main/index.ts` | `done` · PR #23 · 本机过 |
 | P0-F | ST-VOICE-03 | 已合入 | `packages/voice/**` | `done` · PR #24 |
-| P0-G | ST-VIZ-03 | **可派**（E 已合入） | `character.ts`、`main` 转发 | `planned` |
+| P0-G | ST-VIZ-03 | **现在** | `character.ts`、`main` 转发 | `in_progress` · cloud · `cursor/show-agent-phase-pixel-pet` |
 | P0-H | Shell hide + 点击穿透 | 等 G 合入 | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `blocked` |
 
 ---
@@ -402,6 +402,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-25 | P0-G | 认领 ST-VIZ-03（角色窗消费 AgentPhase）· `cursor/show-agent-phase-pixel-pet` | cloud |
 | 2026-08-20 | P0-F | **合入 PR #24**。ST-VOICE-03（packages/voice 分段/流式 ASR）→ `done`。桌面接线仍未做 | 用户指示合入 |
 | 2026-08-20 | P0-E | **合入 PR #23**。ST-STATE-03 + ST-VOICE-02 → `done`。本机打断过。`character.ts`/`main` 释放；可派 P0-G | 用户指示合入 |
 | 2026-08-20 | P0-F | 认领 ST-VOICE-03（packages/voice 分段/流式 ASR）；桌面接线不做 · PR #24 | cloud · `cursor/voice-streaming-asr-a62d` |
