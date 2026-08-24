@@ -70,7 +70,7 @@
 | 项 | 值 |
 |----|-----|
 | 默认分支 | `master` |
-| 当前 tip | `2a16e25` — Merge PR #14（路 B：关闭 ×、停 22s interval、opaque PTT） |
+| 当前 tip | `b248f2e` — Merge PR #25（P0-G：角色窗消费 AgentPhase） |
 | 像素资产 | `e7e425a` — 240×336 分层 idle（`assets/pixel/`，见 `gen-log.md`） |
 | 视觉主路径 | 像素木偶；`createCharacterRenderer` **固定**走 `PixelRenderer`（Live2D 接管是长期项 BL-02） |
 | 舞台 / 角色窗 | 舞台 `240×336`；窗 `240×432`（`geometry.ts`） |
@@ -80,27 +80,46 @@
 | P0 第一批 | **完成**：#15 A · #16 B · #17 C · #18 D 已在 `master` |
 | PetDex 旁路 | **完成** · PR #19 `petdex/`（桌宠运行时不读） |
 | Wave 1.5 路 B | **完成** · PR #14 `2a16e25`。W15-02/04 本机过；W15-03 空闲嘴烟用户接受 |
-| Wave 2 / P0 第二批 | P0-E **完成** · PR #23；P0-F **完成** · PR #24；P0-G **完成** · PR #25 本机过。可派 P0-H |
-| 下一 REQ | `REQ-003` |
+| Wave 2 / P0 第二批 | P0-E **完成** · #23；P0-F **完成** · #24；P0-G **完成** · #25（用户验收通过）。**下一步派 P0-H**；REQ-003 档 A 可与 H 并行 |
+| 下一 REQ | `REQ-004` |
 | 下一 ISS | `ISS-08` |
 | 下一 BL | `BL-08` |
 | 下一 W15 | `W15-08` |
 
 ### 开放 PR / 远程分支
 
-无开放产品 PR。P0-E/F/G 功能分支合入后可删远程。
+无开放产品功能 PR。P0-G 远程分支合入后可删。本板本条只更新进度与排期。
 
-`character.ts` / `main/index.ts` 已释放（P0-G 合入）。可派 P0-H。不要再派第二套 P0-A～G、路 B。
+`character.ts` / `main/index.ts` 已释放（P0-G 合入）。**下一件产品：P0-H。** 不要再派第二套 P0-A～G、路 B。REQ-003 档 A 只动 `packages/agent`，可与 H 并行；档 B/C 等 H 释放 `PixelRenderer` / `character.ts`。
 
 ---
 
 ## 2. 进行中需求
 
-无进行中产品需求。P0-E、P0-F、P0-G 已合入。
+无进行中实现。P0-A～G 均已合入；用户已验收 P0-G。REQ-003 已登记，尚未认领实现。
 
-**现在可派：** P0-H（ST-SHELL + ST-PASS，占 `windows.ts` / `smoke.ts` / `main` / `character.ts`）。不要重开 P0-G。
-**先别派：** W2-Stream / Clone / SFX（Stream 与 H/Shell 串行）。
-不要为 W15-03 去改 `SmokeField`。不要再派 A～D、路 B、或第二套 P0-E/F/G。
+**现在派：** P0-H（ST-SHELL + ST-PASS，占 `windows.ts` / `smoke.ts` / `main` / `character.ts`）。提示词：`docs/pm-epics-p0-p1.md` §6.2 P0-H。不要重开 P0-G。
+**可并行：** REQ-003 **档 A**（只改 `packages/agent` 的 `AGENT_PHASE_MAP`）。不要和 H 同时改 `character.ts`。
+**先别派：** REQ-003 档 B/C（等 H）、W2-Stream（与 H 抢 `main`）、桌面流式 ASR 接线（抢 `character.ts`）。W2-Clone 说明文档可与 H 并行（不碰 `main`）。
+不要为 W15-03 去改 `SmokeField`。不要再派 A～G、路 B。
+
+### REQ-003 · 忙碌时用点烟动作呈现
+
+| 字段 | 内容 |
+|------|------|
+| 状态 | `planned`（G 已验收，档 A **可开工**；档 B/C 等 H） |
+| 来源 | 用户口头：忙碌时希望以点烟呈现；P0-G 验收完成后排期 |
+| 负责人 | 未认领实现 |
+| 忙碌来源 | ① 对话 `PetPhase.Thinking` ② Cursor `AgentPhase` thinking / reading / searching / tool_call |
+| 可写 | 档 A：`packages/agent`（可选 `packages/core` `petPhaseToPose`）。档 B/C：`assets/pixel/**` + `PixelRenderer`；短片再动 `character.ts` |
+| 禁止 | 与 P0-H 同时改 `character.ts` / `main`；改冻结层名 / 240×336 / `sheet.json` 字段名；烟画进身体层；上 Live2D；改 `SmokeField` 掐空闲细烟 |
+| 现状 | G 已把 session_start/permission/error → inhale，complete → exhale，streaming/tool_call/writing → talk；**thinking/reading/searching 仍是 idle**，不像点烟。无 `cigarette.png`、无点烟帧 |
+
+| 档 | 观感 | 何时派 | 建议 |
+|----|------|--------|------|
+| **A 语义近似** | 忙碌=inhale，完成=exhale | **现在**（∥ H） | 默认先做 |
+| **B 烟出现** | 嘴角叠 `cigarette.png` | H 合入后 | 像「叼着等」 |
+| **C 点烟短片** | 2–4 帧对齐差分 + 内部 clip | 用户确认必须看见点火 | 不要新增 CharacterPose |
 
 ---
 
@@ -144,16 +163,17 @@
 | P0-D | ST-VIZ-01/02 AgentPhase + CLI 解析 | #18 `9afb386` | `done` |
 | 旁路 | PetDex/Codex 包 `petdex/` | #19 `b8a83da` | `done`（非桌宠运行时） |
 
-桌面接线：P0-E **已合入**；P0-F **已合入**（只 voice，桌面分段 ASR 仍未接线）；P0-G **已合入**；P0-H 可派。
+桌面接线：P0-E/F/G **已合入且 G 用户验收通过**；P0-H **可派**；桌面分段 ASR 仍未接线（等 H 释放 `character.ts`）。
 
-### P0 第二批（桌面接线，尚未开工）
+### P0 第二批（桌面接线）
 
 | Agent | Story | 何时 | 独占 | 状态 |
 |-------|--------|------|------|------|
 | P0-E | ST-STATE-03 + ST-VOICE-02 | 已合入 | `character.ts`、`main/index.ts` | `done` · PR #23 · 本机过 |
 | P0-F | ST-VOICE-03 | 已合入 | `packages/voice/**` | `done` · PR #24 |
-| P0-G | ST-VIZ-03 | 已合入 | `character.ts`、`main` 转发 | `done` · PR #25 · 本机过 |
-| P0-H | Shell hide + 点击穿透 | **可派**（G 已合入） | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `planned` |
+| P0-G | ST-VIZ-03 | 已合入 + **用户验收** | `character.ts`、`main` 转发 | `done` · PR #25 |
+| P0-H | Shell hide + 点击穿透 | **下一件**（G 已验收） | `windows.ts`、`smoke.ts`、`main`、`character.ts` | `planned` |
+| REQ-003 | 忙碌点烟 | 档 A 可与 H 并行；B/C 等 H | 档 A：`packages/agent`；B/C：像素 + renderer | `planned` |
 
 ---
 
@@ -163,7 +183,7 @@
 
 Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P-Gen / 不要做 C 路**。
 
-**你先做（人）：** 派 P0-E 与 P0-F（提示词 `docs/pm-epics-p0-p1.md` §6.2）。不要再派 A～D / 路 B。不要为 W15-03 去改 `SmokeField`。
+**你先做（人）：** 派 **P0-H**（提示词 `docs/pm-epics-p0-p1.md` §6.2）。可选同时派 REQ-003 档 A（只改 agent 映射）。不要再派 A～G / 路 B。不要为 W15-03 去改 `SmokeField`。不要和 H 对开 W2-Stream。
 
 #### 路况
 
@@ -213,7 +233,8 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 | W15-05 与 W15-06 | 都动嘴层 / `sheet.json`。两者目前都不开，除非用户再要求 |
 | W2-02 与 W2-03 | 都改 `main/index.ts`，**串行** |
 | 整波 Wave 2 壳（Stream/Shell/SFX 接线） | W15-02 已合入。Stream 与 Shell 仍 **串行** |
-| P0-E / G / H | `character.ts` / `main` 同时只能一个：先 E，再 G，再 H。P0-F 只动 voice，可与 E 并行 |
+| P0-H 与 W2-Stream | 都改 `main/index.ts`，**串行**。H 未合入前不要开 Stream |
+| REQ-003 档 B/C 与 H | 都动 `PixelRenderer` / `character.ts`。档 A 只动 `packages/agent`，可与 H 并行 |
 | 两个云端同时改 `character.ts` 或同时改 `assets/pixel/**` | 必冲突 |
 
 #### Wave 2 以后怎么拆（先别派）
@@ -225,11 +246,23 @@ Wave 1 功能已在 `master`。像素运行时资产已落地，**不要再开 P
 | W2-03 Shell | 能写 `windows.ts` / 烟窗 / `main` | **不能**与 W2-02 同时 | 本机试 hide、点击穿透 |
 | W2-04 SFX | 能加 wav + 小播放逻辑 | 避开 `main/index.ts` 时可与 Clone 并行 | 本机听吸/吐 |
 
-### 4.1 建议下一件（无人指定任务时按此取）
+### 4.1 建议下一件（G 验收后；无人指定时按此取）
 
-1. 派 **P0-E** + **P0-F**（§6.2）。E 占 `character.ts` / `main`；F 只占 `packages/voice`。
-2. 不要现在开 P0-G / P0-H。不要再开路 B 或 P0-A～D。
-3. 已合入的功能分支可删。不要改 `assets/pixel/` 去对齐 `petdex/`。不要为 W15-03 去改 `SmokeField`。
+**排期（先串后并）：**
+
+| 顺序 | ID | 做什么 | 文件锁 | 本机 |
+|------|-----|--------|--------|------|
+| 1 | **P0-H** | hide 无烟全屏烟窗；隐藏角色时停画；真点击穿透（透明点到下层，点猫仍可拖/说/关×） | `windows.ts` `smoke.ts` `main` `character.ts`；`PixelRenderer` 只加 hitTest | 必须本机：穿透、CPU、路 B/E/G 回归 |
+| 1∥ | **REQ-003 档 A** | thinking/reading/searching → inhale；complete 已是 exhale | 只 `packages/agent` | 本机：`dispatch_cursor` 忙碌脸是眯眼不是说话嘴 |
+| 2 | REQ-003 档 B（可选） | 对齐 `cigarette.png` + 忙碌时叠嘴角；可顺手 W15-05 | `assets/pixel` + `PixelRenderer` | 像叼着烟 |
+| 2∥ | ISS-04 | README 去掉「有 model3 则 Live2D」 | 只 README | 文档 |
+| 2∥ | W2-01 Clone | 9880 说明 / `config.example.json` | 不碰 `main` | 本机出声才算完 |
+| 3 | W2-02 Stream **或** 桌面 ASR 接线 | 二选一先做；都抢 `main`/`character.ts` | 与对方串行 | 本机听 |
+| 以后 | REQ-003 档 C | 点烟短片 | 须用户点头 | P-Gen 出 2–4 帧 |
+
+1. **现在只派 P0-H**（提示词 §6.2）。可选再派一个 Agent 做 REQ-003 档 A。
+2. 不要再开 P0-A～G、路 B、第二条 H。H 进行中不要开 W2-Stream、不要开档 B/C、不要做桌面 ASR 接线。
+3. 已合入的 P0-G 远程分支可删。不要改 `assets/pixel/` 去对齐 `petdex/`。不要为 W15-03 去改 `SmokeField`。
 
 路 B 已有 PR，下面提示词仅备查，不要再开第二条路 B。
 
@@ -402,6 +435,7 @@ P0/P1 细拆与 **可复制提示词** 见 [pm-epics-p0-p1.md](./pm-epics-p0-p1.
 
 | 日期 (UTC) | ID | 变更 | 操作者 |
 |------------|-----|------|--------|
+| 2026-08-24 | — | 用户确认 **P0-G 验收完成**。快照 tip `b248f2e`。下一件 **P0-H**；登记 REQ-003，档 A 可与 H 并行，档 B/C 等 H | 用户口头 + cloud |
 | 2026-08-25 | P0-G | **合入 PR #25**。ST-VIZ-03 角色窗消费 AgentPhase → `done`。本机：`dispatch_cursor` 有忙碌脸，`complete` 后说话。`character.ts`/`main` 释放；可派 P0-H | 用户指示合入 |
 | 2026-08-25 | P0-G | 认领 ST-VIZ-03（角色窗消费 AgentPhase）· `cursor/show-agent-phase-pixel-pet` | cloud |
 | 2026-08-20 | P0-F | **合入 PR #24**。ST-VOICE-03（packages/voice 分段/流式 ASR）→ `done`。桌面接线仍未做 | 用户指示合入 |
